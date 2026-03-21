@@ -38,3 +38,19 @@ async def require_admin(user: User = Depends(get_current_user)) -> User:
     if user.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
     return user
+
+
+_optional_bearer = HTTPBearer(auto_error=False)
+
+
+async def get_optional_admin(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_optional_bearer),
+) -> bool:
+    """Returns True if request has a valid admin JWT. Returns False for anonymous/student.
+    Raises 401 if credentials are present but invalid (expired, tampered)."""
+    if not credentials:
+        return False
+    payload = decode_token(credentials.credentials)
+    if not payload:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    return payload.get("role") == "admin"
