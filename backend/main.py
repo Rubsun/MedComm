@@ -1,7 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+
 from backend.config import settings, BASE_DIR
+from backend.routers.auth import router as auth_router
+from backend.routers.programs import router as programs_router
+from backend.routers.courses import router as courses_router
+from backend.routers.modules import router as modules_router
+from backend.routers.lessons import router as lessons_router
 
 app = FastAPI(title="MedComm API")
 
@@ -16,6 +22,13 @@ app.add_middleware(
 media_path = BASE_DIR / settings.media_dir
 media_path.mkdir(exist_ok=True)
 app.mount("/media", StaticFiles(directory=str(media_path)), name="media")
+
+app.include_router(auth_router)
+app.include_router(programs_router)
+app.include_router(courses_router)
+app.include_router(modules_router)
+app.include_router(lessons_router)
+
 
 @app.get("/api/health")
 async def health():
