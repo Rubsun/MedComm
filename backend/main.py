@@ -8,6 +8,10 @@ from backend.routers.programs import router as programs_router
 from backend.routers.courses import router as courses_router
 from backend.routers.modules import router as modules_router
 from backend.routers.lessons import router as lessons_router
+from backend.routers.media import router as media_router
+from backend.routers.progress import router as progress_router
+from backend.routers.analytics import router as analytics_router
+from backend.routers.students import router as students_router
 
 app = FastAPI(title="MedComm API")
 
@@ -28,6 +32,10 @@ app.include_router(programs_router)
 app.include_router(courses_router)
 app.include_router(modules_router)
 app.include_router(lessons_router)
+app.include_router(media_router)
+app.include_router(progress_router)
+app.include_router(analytics_router)
+app.include_router(students_router)
 
 
 @app.get("/api/health")
