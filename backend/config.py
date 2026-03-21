@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 30
     media_dir: str = "media"
+    cookie_secure: bool = False
     cors_origins: list[str] = ["http://localhost:5173"]
 
 settings = Settings()
