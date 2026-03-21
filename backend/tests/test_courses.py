@@ -58,3 +58,12 @@ async def test_list_courses_hides_unpublished(client, admin_token, student_token
     resp = await client.get(f"/api/courses?program_id={prog['id']}")
     assert resp.status_code == 200
     assert resp.json() == []
+
+
+async def test_get_course_hides_unpublished(client, admin_token, student_token):
+    """Students get 404 for unpublished courses."""
+    h = {"Authorization": f"Bearer {admin_token}"}
+    prog = (await client.post("/api/programs", json={"title": "P", "description": ""}, headers=h)).json()
+    course = (await client.post("/api/courses", json={"program_id": prog["id"], "title": "C", "description": ""}, headers=h)).json()
+    resp = await client.get(f"/api/courses/{course['id']}", headers={"Authorization": f"Bearer {student_token}"})
+    assert resp.status_code == 404

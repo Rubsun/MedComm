@@ -71,6 +71,12 @@ async def test_get_program_hides_unpublished(client, admin_token, student_token)
     assert resp.status_code == 404
 
 
+async def test_invalid_token_returns_401(client):
+    """Invalid JWT on optional-auth endpoint returns 401, not silent anonymous access."""
+    resp = await client.get("/api/programs", headers={"Authorization": "Bearer invalid.jwt.token"})
+    assert resp.status_code == 401
+
+
 async def test_update_program(client, admin_token):
     h = {"Authorization": f"Bearer {admin_token}"}
     p = (await client.post("/api/programs", json={"title": "Old", "description": ""}, headers=h)).json()

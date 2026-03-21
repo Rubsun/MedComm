@@ -51,6 +51,6 @@ async def get_optional_admin(
     if not credentials:
         return False
     payload = decode_token(credentials.credentials)
-    if not payload:
+    if not payload or payload.get("type") != "access":
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
     return payload.get("role") == "admin"

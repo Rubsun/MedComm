@@ -1,7 +1,6 @@
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
-from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy.pool import NullPool
 
@@ -12,42 +11,30 @@ from backend.config import settings
 
 TEST_DATABASE_URL = settings.test_database_url or settings.database_url.replace("/medcomm", "/medcomm_test")
 
-
-@pytest.fixture(scope="session")
-def test_engine():
-    engine = create_async_engine(TEST_DATABASE_URL, echo=False)
-    yield engine
-
-
-@pytest.fixture(scope="session")
-def test_session_factory(test_engine):
-    return async_sessionmaker(test_engine, expire_on_commit=False)
+# Single shared engine with NullPool for all test operations.
+# NullPool means no connection reuse across event loops — safe for pytest-asyncio.
+_engine = create_async_engine(TEST_DATABASE_URL, echo=False, poolclass=NullPool)
+TestSessionLocal = async_sessionmaker(_engine, expire_on_commit=False)
 
 
-@pytest_asyncio.fixture(loop_scope="session", scope="session", autouse=True)
-async def setup_test_db(test_engine):
-    async with test_engine.begin() as conn:
+@pytest_asyncio.fixture(scope="session", autouse=True)
+async def setup_test_db():
+    async with _engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     yield
-    async with test_engine.begin() as conn:
+    async with _engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
-    await test_engine.dispose()
+    await _engine.dispose()
 
 
 @pytest_asyncio.fixture(autouse=True)
 async def clean_tables():
     yield
-    # Use a fresh engine for cleanup to avoid event loop conflicts
-    cleanup_engine = create_async_engine(TEST_DATABASE_URL, echo=False)
-    async with cleanup_engine.begin() as conn:
+    # Use the shared NullPool engine — no event loop conflict.
+    async with _engine.begin() as conn:
         for table in reversed(Base.metadata.sorted_tables):
             await conn.execute(table.delete())
-    await cleanup_engine.dispose()
-
-
-_override_engine = create_async_engine(TEST_DATABASE_URL, echo=False, poolclass=NullPool)
-TestSessionLocal = async_sessionmaker(_override_engine, expire_on_commit=False)
 
 
 async def override_get_db():
@@ -81,11 +68,10 @@ async def student_token(client):
 
 @pytest_asyncio.fixture
 async def admin_token(client):
+    """Create admin user via the shared TestSessionLocal (no separate engine)."""
     from backend.models.user import User
     from backend.services.auth_service import hash_password
-    engine = create_async_engine(TEST_DATABASE_URL, echo=False)
-    factory = async_sessionmaker(engine, expire_on_commit=False)
-    async with factory() as session:
+    async with TestSessionLocal() as session:
         admin = User(
             email="admin@test.com",
             password_hash=hash_password("admin123"),
@@ -95,7 +81,6 @@ async def admin_token(client):
         )
         session.add(admin)
         await session.commit()
-    await engine.dispose()
     resp = await client.post("/api/auth/login", json={
         "email": "admin@test.com",
         "password": "admin123",
