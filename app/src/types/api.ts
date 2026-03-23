@@ -87,6 +87,7 @@ export interface QuizResultOut {
 export interface AnalyticsOverview {
   total_students: number;
   enrollments_per_course: { course_id: number; course_title: string; enrollment_count: number }[];
+  active_students_last_30_days: number;
 }
 
 export interface CompletionRate {
