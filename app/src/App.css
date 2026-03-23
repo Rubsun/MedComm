@@ -1,0 +1,206 @@
+/* ============================================
+   MedComm Platform - Education Platform Styles
+   ============================================ */
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Prose styles for theory content */
+.prose {
+  color: #334155;
+  line-height: 1.7;
+}
+
+.prose p {
+  margin-bottom: 1rem;
+}
+
+.prose strong {
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.prose ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.prose ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.prose li {
+  margin-bottom: 0.5rem;
+}
+
+.prose h1, .prose h2, .prose h3, .prose h4 {
+  color: #1e293b;
+  font-weight: 700;
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+/* Card hover effects */
+.card-hover {
+  transition: all 0.3s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Animation for page transitions */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-transition {
+  animation: fadeIn 0.3s ease;
+}
+
+/* Practice scenario styles */
+.scenario-option {
+  transition: all 0.2s ease;
+}
+
+.scenario-option:hover:not(:disabled) {
+  border-color: #3b82f6;
+  background-color: #eff6ff;
+}
+
+/* Progress bar animation */
+@keyframes progressFill {
+  from {
+    width: 0;
+  }
+}
+
+.progress-animate {
+  animation: progressFill 0.5s ease-out;
+}
+
+/* Badge pulse for achievements */
+@keyframes badgePulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.badge-pulse {
+  animation: badgePulse 2s infinite;
+}
+
+/* Sidebar transition */
+.sidebar-transition {
+  transition: transform 0.3s ease, width 0.3s ease;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .prose {
+    font-size: 0.95rem;
+  }
+  
+  .hide-mobile {
+    display: none !important;
+  }
+}
+
+/* Focus styles for accessibility */
+button:focus-visible,
+a:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Selection color */
+::selection {
+  background: rgba(59, 130, 246, 0.2);
+  color: inherit;
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  body {
+    background: white !important;
+  }
+}
+
+/* Custom focus ring for inputs */
+input:focus,
+textarea:focus,
+select:focus {
+  ring: 2px;
+  ring-color: #3b82f6;
+  ring-offset: 2px;
+}
+
+/* Loading skeleton animation */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    #f1f5f9 25%,
+    #e2e8f0 50%,
+    #f1f5f9 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
