@@ -8,12 +8,12 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
 
-# Add project root to path so 'backend' package is importable
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+# Add backend directory to path so modules are importable both locally and in Docker
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from backend.config import settings
-from backend.database import Base
-from backend.models import *  # noqa: F401 — registers all models with Base.metadata
+from config import settings
+from database import Base
+from models import *  # noqa: F401 — registers all models with Base.metadata
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.database_url)
