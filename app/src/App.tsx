@@ -1,133 +1,39 @@
-import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { useStore } from '@/store/useStore';
+import { AuthProvider, useAuth } from '@/context/AuthContext';
 import AppLayout from '@/components/layout/AppLayout';
 import Dashboard from '@/pages/Dashboard';
 import LessonPage from '@/pages/LessonPage';
 import Profile from '@/pages/Profile';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Stethoscope, GraduationCap, Users, Award } from 'lucide-react';
-
-// ============================================
-// LOGIN PAGE
-// ============================================
-function LoginPage() {
-  const { login, isAuthenticated } = useStore();
-
-  const handleLogin = () => {
-    // Demo login - в реальности здесь будет API запрос к Django
-    login({
-      id: 1,
-      email: 'student@meduniversity.ru',
-      firstName: 'Анна',
-      lastName: 'Петрова',
-      avatar: '',
-      role: 'student',
-      group: 'Мед-301',
-      yearOfStudy: 3,
-      createdAt: new Date().toISOString()
-    });
-  };
-
-  if (isAuthenticated) {
-    return <Navigate to="/" />;
-  }
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
-      <div className="max-w-4xl w-full grid md:grid-cols-2 gap-8">
-        {/* Left Side - Info */}
-        <div className="flex flex-col justify-center">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white p-3 rounded-xl">
-              <Stethoscope className="w-8 h-8" />
-            </div>
-            <h1 className="text-2xl font-bold text-slate-800">MedComm Platform</h1>
-          </div>
-          
-          <h2 className="text-4xl font-bold text-slate-800 mb-4">
-            Обучение коммуникации врача с пациентом
-          </h2>
-          
-          <p className="text-slate-600 mb-8">
-            Научитесь эффективно общаться с пациентами разных типов и возрастов. 
-            Курс основан на 28 научных исследованиях.
-          </p>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex items-center gap-3">
-              <div className="bg-blue-100 p-2 rounded-lg">
-                <GraduationCap className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <div className="font-semibold text-slate-800">12 уроков</div>
-                <div className="text-sm text-slate-500">Теория + практика</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="bg-green-100 p-2 rounded-lg">
-                <Users className="w-5 h-5 text-green-600" />
-              </div>
-              <div>
-                <div className="font-semibold text-slate-800">18 упражнений</div>
-                <div className="text-sm text-slate-500">Интерактивные кейсы</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="bg-amber-100 p-2 rounded-lg">
-                <Award className="w-5 h-5 text-amber-600" />
-              </div>
-              <div>
-                <div className="font-semibold text-slate-800">Сертификат</div>
-                <div className="text-sm text-slate-500">По завершении</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Side - Login Form */}
-        <Card className="shadow-xl">
-          <CardHeader>
-            <CardTitle className="text-xl">Вход в систему</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <label className="text-sm font-medium text-slate-700">Email</label>
-              <Input 
-                type="email" 
-                placeholder="student@meduniversity.ru"
-                defaultValue="student@meduniversity.ru"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-slate-700">Пароль</label>
-              <Input type="password" placeholder="••••••••" defaultValue="password" />
-            </div>
-            <Button onClick={handleLogin} className="w-full">
-              Войти
-            </Button>
-            <p className="text-center text-sm text-slate-500">
-              Для демо просто нажмите "Войти"
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
-}
+import LoginPage from '@/pages/LoginPage';
+import RegisterPage from '@/pages/RegisterPage';
+import AdminLayout from '@/pages/admin/AdminLayout';
+import ProgramsPage from '@/pages/admin/ProgramsPage';
+import CoursesPage from '@/pages/admin/CoursesPage';
+import LessonsPage from '@/pages/admin/LessonsPage';
+import LessonEditorPage from '@/pages/admin/LessonEditorPage';
+import StudentsPage from '@/pages/admin/StudentsPage';
+import StudentProgressPage from '@/pages/admin/StudentProgressPage';
+import AnalyticsPage from '@/pages/admin/AnalyticsPage';
 
 // ============================================
 // PROTECTED ROUTE
 // ============================================
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useStore();
-  
-  if (!isAuthenticated) {
-    return <Navigate to="/login" />;
-  }
+  const { isAuthenticated, isLoading } = useAuth();
 
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center">Загрузка...</div>;
+  if (!isAuthenticated) return <Navigate to="/login" />;
+  return <>{children}</>;
+}
+
+// ============================================
+// ADMIN ROUTE
+// ============================================
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isAdmin, isLoading } = useAuth();
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center">Загрузка...</div>;
+  if (!isAuthenticated) return <Navigate to="/login" />;
+  if (!isAdmin) return <Navigate to="/" />;
   return <>{children}</>;
 }
 
@@ -135,43 +41,31 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 // MAIN APP
 // ============================================
 function App() {
-  const { isAuthenticated, setProgress } = useStore();
-
-  useEffect(() => {
-    // Инициализация прогресса при загрузке
-    if (isAuthenticated) {
-      setProgress({
-        userId: 1,
-        courseId: 'medcomm-101',
-        completedLessons: [],
-        completedExercises: [],
-        quizResults: [],
-        totalProgress: 0,
-        lastAccessedAt: new Date().toISOString(),
-        certificates: []
-      });
-    }
-  }, [isAuthenticated]);
-
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route 
-          path="/" 
-          element={
-            <ProtectedRoute>
-              <AppLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<Dashboard />} />
-          <Route path="lesson" element={<LessonPage />} />
-          <Route path="profile" element={<Profile />} />
-          <Route path="achievements" element={<Profile />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+            <Route index element={<Dashboard />} />
+            <Route path="lesson/:lessonId" element={<LessonPage />} />
+            <Route path="profile" element={<Profile />} />
+            <Route path="achievements" element={<Profile />} />
+          </Route>
+          <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
+            <Route index element={<Navigate to="/admin/programs" />} />
+            <Route path="programs" element={<ProgramsPage />} />
+            <Route path="programs/:programId/courses" element={<CoursesPage />} />
+            <Route path="courses/:courseId/lessons" element={<LessonsPage />} />
+            <Route path="lessons/:lessonId/editor" element={<LessonEditorPage />} />
+            <Route path="students" element={<StudentsPage />} />
+            <Route path="students/:studentId" element={<StudentProgressPage />} />
+            <Route path="analytics" element={<AnalyticsPage />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 
