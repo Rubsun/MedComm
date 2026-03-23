@@ -29,6 +29,7 @@ export default function LessonsPage() {
     setLessonsByModule(byMod);
   }, [cid]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   const createModule = async () => {

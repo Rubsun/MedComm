@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { DndContext, closestCenter } from '@dnd-kit/core';
 import type { DragEndEvent } from '@dnd-kit/core';
@@ -77,8 +77,8 @@ export default function CoursesPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editTitle, setEditTitle] = useState('');
 
-  const load = () => coursesApi.list(pid).then(r => setCourses(r.data));
-  useEffect(() => { load(); }, [pid]);
+  const load = useCallback(() => coursesApi.list(pid).then(r => setCourses(r.data)), [pid]);
+  useEffect(() => { load(); }, [load]);
 
   const handleCreate = async () => {
     if (!newTitle.trim()) return;
