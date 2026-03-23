@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import axios from 'axios';
 import { authApi } from '@/api/auth';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -22,8 +23,12 @@ export default function RegisterPage() {
       await login(form.email, form.password);
       navigate('/');
     } catch (e: unknown) {
-      const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setError(msg ?? 'Ошибка регистрации');
+      if (axios.isAxiosError(e)) {
+        const detail = e.response?.data?.detail;
+        setError(typeof detail === 'string' ? detail : 'Ошибка регистрации');
+      } else {
+        setError('Ошибка регистрации');
+      }
     } finally {
       setLoading(false);
     }

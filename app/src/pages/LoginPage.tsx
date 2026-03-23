@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, Navigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,8 +15,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   if (isAuthenticated) {
-    navigate('/');
-    return null;
+    return <Navigate to="/" replace />;
   }
 
   const handleLogin = async () => {
