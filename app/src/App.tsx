@@ -1,6 +1,6 @@
+import { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
-import { useStore } from '@/store/useStore';
 import AppLayout from '@/components/layout/AppLayout';
 import Dashboard from '@/pages/Dashboard';
 import LessonPage from '@/pages/LessonPage';
@@ -14,21 +14,18 @@ import { Stethoscope, GraduationCap, Users, Award } from 'lucide-react';
 // LOGIN PAGE
 // ============================================
 function LoginPage() {
-  const { login: storeLogin, isAuthenticated } = useStore();
+  const { login, isAuthenticated } = useAuth();
+  const [email, setEmail] = useState('student@test.com');
+  const [password, setPassword] = useState('student123');
+  const [error, setError] = useState('');
 
-  const handleLogin = () => {
-    // Demo login - в реальности здесь будет API запрос к Django
-    storeLogin({
-      id: 1,
-      email: 'student@meduniversity.ru',
-      firstName: 'Анна',
-      lastName: 'Петрова',
-      avatar: '',
-      role: 'student',
-      group: 'Мед-301',
-      yearOfStudy: 3,
-      createdAt: new Date().toISOString()
-    });
+  const handleLogin = async () => {
+    setError('');
+    try {
+      await login(email, password);
+    } catch {
+      setError('Неверный email или пароль');
+    }
   };
 
   if (isAuthenticated) {
@@ -97,20 +94,26 @@ function LoginPage() {
               <label className="text-sm font-medium text-slate-700">Email</label>
               <Input
                 type="email"
-                placeholder="student@meduniversity.ru"
-                defaultValue="student@meduniversity.ru"
+                placeholder="student@test.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
             </div>
             <div>
               <label className="text-sm font-medium text-slate-700">Пароль</label>
-              <Input type="password" placeholder="••••••••" defaultValue="password" />
+              <Input
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
             </div>
+            {error && (
+              <p className="text-sm text-red-600">{error}</p>
+            )}
             <Button onClick={handleLogin} className="w-full">
               Войти
             </Button>
-            <p className="text-center text-sm text-slate-500">
-              Для демо просто нажмите "Войти"
-            </p>
           </CardContent>
         </Card>
       </div>

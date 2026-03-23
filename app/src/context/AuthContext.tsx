@@ -1,7 +1,10 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
+import axios from 'axios';
 import { setAccessToken } from '@/api/client';
 import { authApi } from '@/api/auth';
 import type { UserOut } from '@/types/api';
+
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
 
 interface AuthContextValue {
   user: UserOut | null;
@@ -27,7 +30,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     (async () => {
       try {
-        const refreshRes = await authApi.refresh();
+        const refreshRes = await axios.post(
+          `${BASE_URL}/api/auth/refresh`,
+          {},
+          { withCredentials: true }
+        );
         setAccessToken(refreshRes.data.access_token);
         const meRes = await authApi.me();
         setUser(meRes.data);
