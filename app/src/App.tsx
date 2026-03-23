@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { useStore } from '@/store/useStore';
 import AppLayout from '@/components/layout/AppLayout';
 import Dashboard from '@/pages/Dashboard';
@@ -14,11 +14,11 @@ import { Stethoscope, GraduationCap, Users, Award } from 'lucide-react';
 // LOGIN PAGE
 // ============================================
 function LoginPage() {
-  const { login, isAuthenticated } = useStore();
+  const { login: storeLogin, isAuthenticated } = useStore();
 
   const handleLogin = () => {
     // Demo login - в реальности здесь будет API запрос к Django
-    login({
+    storeLogin({
       id: 1,
       email: 'student@meduniversity.ru',
       firstName: 'Анна',
@@ -46,13 +46,13 @@ function LoginPage() {
             </div>
             <h1 className="text-2xl font-bold text-slate-800">MedComm Platform</h1>
           </div>
-          
+
           <h2 className="text-4xl font-bold text-slate-800 mb-4">
             Обучение коммуникации врача с пациентом
           </h2>
-          
+
           <p className="text-slate-600 mb-8">
-            Научитесь эффективно общаться с пациентами разных типов и возрастов. 
+            Научитесь эффективно общаться с пациентами разных типов и возрастов.
             Курс основан на 28 научных исследованиях.
           </p>
 
@@ -95,8 +95,8 @@ function LoginPage() {
           <CardContent className="space-y-4">
             <div>
               <label className="text-sm font-medium text-slate-700">Email</label>
-              <Input 
-                type="email" 
+              <Input
+                type="email"
                 placeholder="student@meduniversity.ru"
                 defaultValue="student@meduniversity.ru"
               />
@@ -122,12 +122,10 @@ function LoginPage() {
 // PROTECTED ROUTE
 // ============================================
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useStore();
-  
-  if (!isAuthenticated) {
-    return <Navigate to="/login" />;
-  }
+  const { isAuthenticated, isLoading } = useAuth();
 
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center">Загрузка...</div>;
+  if (!isAuthenticated) return <Navigate to="/login" />;
   return <>{children}</>;
 }
 
@@ -135,43 +133,27 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 // MAIN APP
 // ============================================
 function App() {
-  const { isAuthenticated, setProgress } = useStore();
-
-  useEffect(() => {
-    // Инициализация прогресса при загрузке
-    if (isAuthenticated) {
-      setProgress({
-        userId: 1,
-        courseId: 'medcomm-101',
-        completedLessons: [],
-        completedExercises: [],
-        quizResults: [],
-        totalProgress: 0,
-        lastAccessedAt: new Date().toISOString(),
-        certificates: []
-      });
-    }
-  }, [isAuthenticated]);
-
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route 
-          path="/" 
-          element={
-            <ProtectedRoute>
-              <AppLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<Dashboard />} />
-          <Route path="lesson" element={<LessonPage />} />
-          <Route path="profile" element={<Profile />} />
-          <Route path="achievements" element={<Profile />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <AppLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<Dashboard />} />
+            <Route path="lesson" element={<LessonPage />} />
+            <Route path="profile" element={<Profile />} />
+            <Route path="achievements" element={<Profile />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 
