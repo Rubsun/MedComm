@@ -50,11 +50,11 @@ async def get_quiz_results(db: AsyncSession) -> list:
     result = await db.execute(
         select(
             LessonBlock.id,
-            func.avg(QuizResult.best_score * 100.0 / QuizResult.max_score).label("avg_score_pct"),
+            func.avg(QuizResult.best_score * 100.0 / func.nullif(QuizResult.max_score, 0)).label("avg_score_pct"),
             func.count(QuizResult.id).label("attempt_count"),
             func.sum(func.cast(QuizResult.passed, Integer)).label("passed_count"),
         )
-        .join(QuizResult, QuizResult.lesson_block_id == LessonBlock.id)
+        .outerjoin(QuizResult, QuizResult.lesson_block_id == LessonBlock.id)
         .where(LessonBlock.type == "quiz")
         .group_by(LessonBlock.id)
     )

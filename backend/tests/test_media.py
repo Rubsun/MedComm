@@ -33,3 +33,12 @@ async def test_upload_rejects_invalid_type(client, admin_token):
         headers=h,
     )
     assert resp.status_code == 400
+
+
+async def test_upload_requires_admin_not_student(client, student_token):
+    resp = await client.post(
+        "/api/media/upload",
+        files={"file": ("test.jpg", io.BytesIO(b"fake"), "image/jpeg")},
+        headers={"Authorization": f"Bearer {student_token}"},
+    )
+    assert resp.status_code == 403

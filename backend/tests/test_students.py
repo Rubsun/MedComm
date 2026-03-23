@@ -37,3 +37,14 @@ async def test_student_progress(client, admin_token, student_token):
     data = resp.json()
     assert "enrollments" in data
     assert "completed_lessons" in data
+
+
+async def test_deactivate_student_toggle(client, admin_token, student_token):
+    """Deactivate toggles back to True on second call."""
+    students = (await client.get("/api/students", headers={"Authorization": f"Bearer {admin_token}"})).json()
+    student_id = students[0]["id"]
+    h = {"Authorization": f"Bearer {admin_token}"}
+    await client.patch(f"/api/students/{student_id}/deactivate", headers=h)
+    resp = await client.patch(f"/api/students/{student_id}/deactivate", headers=h)
+    assert resp.status_code == 200
+    assert resp.json()["is_active"] is True

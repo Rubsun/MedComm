@@ -25,7 +25,7 @@ class SubmitQuizRequest(BaseModel):
 class PracticeResultOut(BaseModel):
     id: int
     lesson_block_id: int
-    selected_option_ids: list
+    selected_option_ids: list[str]
     is_correct: bool
     completed_at: datetime
 

@@ -12,5 +12,4 @@ async def upload_file(
     file: UploadFile = File(...),
     admin: User = Depends(require_admin),
 ):
-    url = await save_file(file)
-    return {"url": url, "filename": file.filename}
+    return await save_file(file)

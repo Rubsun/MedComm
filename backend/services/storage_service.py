@@ -16,8 +16,8 @@ ALLOWED_TYPES = {
 MAX_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB
 
 
-async def save_file(file: UploadFile) -> str:
-    """Save uploaded file and return its URL path."""
+async def save_file(file: UploadFile) -> dict:
+    """Save uploaded file and return url and stored filename."""
     if file.content_type not in ALLOWED_TYPES:
         raise HTTPException(status_code=400, detail=f"File type '{file.content_type}' not allowed")
 
@@ -34,4 +34,4 @@ async def save_file(file: UploadFile) -> str:
     async with aiofiles.open(str(filepath), "wb") as f:
         await f.write(content)
 
-    return f"/media/{filename}"
+    return {"url": f"/media/{filename}", "filename": filename}

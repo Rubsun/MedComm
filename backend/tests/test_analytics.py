@@ -25,3 +25,9 @@ async def test_dropoff(client, admin_token):
     resp = await client.get("/api/analytics/dropoff", headers={"Authorization": f"Bearer {admin_token}"})
     assert resp.status_code == 200
     assert isinstance(resp.json(), list)
+
+
+async def test_quiz_results(client, admin_token):
+    resp = await client.get("/api/analytics/quiz-results", headers={"Authorization": f"Bearer {admin_token}"})
+    assert resp.status_code == 200
+    assert isinstance(resp.json(), list)

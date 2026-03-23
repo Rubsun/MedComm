@@ -43,7 +43,7 @@ async def complete_lesson(
         select(UserProgress).where(UserProgress.user_id == user.id, UserProgress.lesson_id == body.lesson_id)
     )
     if result.scalar_one_or_none():
-        return {"message": "Already completed"}
+        return JSONResponse(content={"message": "Already completed"}, status_code=200)
     progress = UserProgress(user_id=user.id, lesson_id=body.lesson_id)
     db.add(progress)
     await db.commit()
@@ -78,7 +78,8 @@ async def submit_practice(
         existing.is_correct = is_correct
         await db.commit()
         await db.refresh(existing)
-        return existing
+        out = PracticeResultOut.model_validate(existing)
+        return JSONResponse(content=out.model_dump(mode="json"), status_code=200)
 
     practice_result = PracticeResult(
         user_id=user.id,
