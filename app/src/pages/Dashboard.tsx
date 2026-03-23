@@ -24,9 +24,9 @@ export default function Dashboard() {
       res.data.forEach(p => {
         coursesApi.list(p.id).then(cr =>
           setCourses(prev => ({ ...prev, [p.id]: cr.data }))
-        );
+        ).catch(err => console.error('Failed to load courses for program', p.id, err));
       });
-    });
+    }).catch(err => console.error('Failed to load programs', err));
   }, []);
 
   const handleEnroll = async (courseId: number) => {
@@ -39,6 +39,8 @@ export default function Dashboard() {
         const lessons = (await lessonsApi.list(modules[0].id)).data;
         if (lessons.length > 0) navigate(`/lesson/${lessons[0].id}`);
       }
+    } catch (err) {
+      console.error('Failed to enroll in course', courseId, err);
     } finally {
       setEnrolling(null);
     }

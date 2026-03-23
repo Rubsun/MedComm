@@ -18,6 +18,7 @@ export default function PracticeBlock({ block }: { block: LessonBlockOut }) {
   const [selected, setSelected] = useState<string[]>([]);
   const [result, setResult] = useState<{ is_correct: boolean; selected_option_ids: string[] } | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const toggleOption = (id: string) => {
     if (data.answer_mode === 'single') {
@@ -29,9 +30,13 @@ export default function PracticeBlock({ block }: { block: LessonBlockOut }) {
 
   const handleSubmit = async () => {
     setSubmitting(true);
+    setSubmitError(null);
     try {
       const res = await progressApi.submitPractice(block.id, selected);
       setResult(res.data);
+    } catch (err) {
+      console.error('Failed to submit practice', err);
+      setSubmitError('Не удалось отправить ответ. Попробуйте ещё раз.');
     } finally {
       setSubmitting(false);
     }
@@ -65,9 +70,12 @@ export default function PracticeBlock({ block }: { block: LessonBlockOut }) {
       </div>
 
       {!result && (
-        <Button onClick={handleSubmit} disabled={selected.length === 0 || submitting} size="sm">
-          {submitting ? 'Отправка...' : 'Ответить'}
-        </Button>
+        <>
+          <Button onClick={handleSubmit} disabled={selected.length === 0 || submitting} size="sm">
+            {submitting ? 'Отправка...' : 'Ответить'}
+          </Button>
+          {submitError && <p className="text-sm text-red-500 mt-1">{submitError}</p>}
+        </>
       )}
 
       {result && (

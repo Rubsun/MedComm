@@ -18,14 +18,21 @@ export default function LessonPage() {
   const [blocks, setBlocks] = useState<LessonBlockOut[]>([]);
   const [completed, setCompleted] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!lessonId) return;
     const id = Number(lessonId);
-    lessonsApi.get(id).then(r => setLesson(r.data));
+    lessonsApi.get(id).then(r => setLesson(r.data)).catch(err => {
+      console.error('Failed to load lesson', err);
+      setError('Не удалось загрузить урок');
+    });
     lessonsApi.getBlocks(id).then(r =>
       setBlocks(r.data.sort((a, b) => a.sort_order - b.sort_order))
-    );
+    ).catch(err => {
+      console.error('Failed to load lesson blocks', err);
+      setError('Не удалось загрузить содержимое урока');
+    });
   }, [lessonId]);
 
   const handleComplete = async () => {
@@ -33,11 +40,14 @@ export default function LessonPage() {
     try {
       await progressApi.completeLesson(Number(lessonId));
       setCompleted(true);
+    } catch (err) {
+      console.error('Failed to complete lesson', err);
     } finally {
       setCompleting(false);
     }
   };
 
+  if (error) return <div className="p-6 text-red-500">{error}</div>;
   if (!lesson) return <div className="p-6 text-slate-500">Загрузка...</div>;
 
   return (

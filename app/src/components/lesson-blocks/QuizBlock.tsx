@@ -23,6 +23,7 @@ export default function QuizBlock({ block }: { block: LessonBlockOut }) {
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
   const [result, setResult] = useState<QuizResultOut | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const toggleAnswer = (questionId: string, optionId: string, isSingle: boolean) => {
     setAnswers(prev => {
@@ -39,6 +40,7 @@ export default function QuizBlock({ block }: { block: LessonBlockOut }) {
 
   const handleSubmit = async () => {
     setSubmitting(true);
+    setSubmitError(null);
     let score = 0;
     let maxScore = 0;
     for (const q of data.questions) {
@@ -53,6 +55,9 @@ export default function QuizBlock({ block }: { block: LessonBlockOut }) {
     try {
       const res = await progressApi.submitQuiz(block.id, score, maxScore);
       setResult(res.data);
+    } catch (err) {
+      console.error('Failed to submit quiz', err);
+      setSubmitError('Не удалось отправить тест. Попробуйте ещё раз.');
     } finally {
       setSubmitting(false);
     }
@@ -83,9 +88,12 @@ export default function QuizBlock({ block }: { block: LessonBlockOut }) {
       ))}
 
       {!result && (
-        <Button onClick={handleSubmit} disabled={submitting} size="sm">
-          {submitting ? 'Проверка...' : 'Сдать тест'}
-        </Button>
+        <>
+          <Button onClick={handleSubmit} disabled={submitting} size="sm">
+            {submitting ? 'Проверка...' : 'Сдать тест'}
+          </Button>
+          {submitError && <p className="text-sm text-red-500 mt-1">{submitError}</p>}
+        </>
       )}
 
       {result && (

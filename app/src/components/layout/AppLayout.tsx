@@ -22,20 +22,24 @@ export default function AppLayout() {
 
   useEffect(() => {
     (async () => {
-      const programs = (await programsApi.list()).data;
-      const fullTree: NavProgram[] = await Promise.all(programs.map(async p => {
-        const courses = (await coursesApi.list(p.id)).data;
-        const fullCourses: NavCourse[] = await Promise.all(courses.map(async c => {
-          const modules = (await modulesApi.list(c.id)).data;
-          const fullModules: NavModule[] = await Promise.all(modules.map(async m => {
-            const lessons = (await lessonsApi.list(m.id)).data;
-            return { ...m, lessons };
+      try {
+        const programs = (await programsApi.list()).data;
+        const fullTree: NavProgram[] = await Promise.all(programs.map(async p => {
+          const courses = (await coursesApi.list(p.id)).data;
+          const fullCourses: NavCourse[] = await Promise.all(courses.map(async c => {
+            const modules = (await modulesApi.list(c.id)).data;
+            const fullModules: NavModule[] = await Promise.all(modules.map(async m => {
+              const lessons = (await lessonsApi.list(m.id)).data;
+              return { ...m, lessons };
+            }));
+            return { ...c, modules: fullModules };
           }));
-          return { ...c, modules: fullModules };
+          return { ...p, courses: fullCourses };
         }));
-        return { ...p, courses: fullCourses };
-      }));
-      setTree(fullTree);
+        setTree(fullTree);
+      } catch (err) {
+        console.error('Failed to load navigation tree', err);
+      }
     })();
   }, []);
 
