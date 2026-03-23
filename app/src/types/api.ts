@@ -109,7 +109,7 @@ export interface StudentOut {
   last_name: string;
   role: string;
   is_active: boolean;
-  created_at: string;
+  created_at?: string;
 }
 
 export interface StudentProgress {
