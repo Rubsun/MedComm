@@ -16,9 +16,9 @@ export const lessonsApi = {
 
   getBlocks: (lessonId: number) =>
     apiClient.get<LessonBlockOut[]>(`/api/lessons/${lessonId}/blocks`),
-  createBlock: (lessonId: number, data: { type: string; sort_order: number; data: object }) =>
+  createBlock: (lessonId: number, data: { type: string; sort_order: number; data: Record<string, unknown> }) =>
     apiClient.post<LessonBlockOut>(`/api/lessons/${lessonId}/blocks`, data),
-  updateBlock: (lessonId: number, blockId: number, data: { sort_order?: number; data?: object }) =>
+  updateBlock: (lessonId: number, blockId: number, data: { sort_order?: number; data?: Record<string, unknown> }) =>
     apiClient.put<LessonBlockOut>(`/api/lessons/${lessonId}/blocks/${blockId}`, data),
   deleteBlock: (lessonId: number, blockId: number) =>
     apiClient.delete(`/api/lessons/${lessonId}/blocks/${blockId}`),
