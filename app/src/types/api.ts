@@ -5,7 +5,6 @@ export interface UserOut {
   last_name: string;
   role: 'student' | 'admin';
   is_active: boolean;
-  created_at: string;
 }
 
 export interface TokenResponse {
@@ -20,7 +19,6 @@ export interface ProgramOut {
   image_url: string | null;
   is_published: boolean;
   sort_order: number;
-  created_at: string;
 }
 
 export interface CourseOut {
@@ -30,7 +28,6 @@ export interface CourseOut {
   description: string;
   is_published: boolean;
   sort_order: number;
-  created_at: string;
 }
 
 export interface ModuleOut {
@@ -40,7 +37,6 @@ export interface ModuleOut {
   description: string;
   is_locked: boolean;
   sort_order: number;
-  created_at: string;
 }
 
 export interface LessonOut {
@@ -52,7 +48,6 @@ export interface LessonOut {
   duration_min: number;
   is_published: boolean;
   sort_order: number;
-  created_at: string;
 }
 
 export interface LessonBlockOut {
@@ -91,23 +86,20 @@ export interface QuizResultOut {
 
 export interface AnalyticsOverview {
   total_students: number;
-  enrollments_per_course: { course_id: number; course_title: string; count: number }[];
+  enrollments_per_course: { course_id: number; course_title: string; enrollment_count: number }[];
 }
 
 export interface CompletionRate {
   lesson_id: number;
   lesson_title: string;
-  enrolled_count: number;
   completed_count: number;
-  completion_rate: number;
 }
 
 export interface QuizAnalytics {
   lesson_block_id: number;
-  lesson_id: number;
   avg_score_pct: number | null;
-  pass_rate: number;
-  total_attempts: number;
+  attempt_count: number;
+  passed_count: number;
 }
 
 export interface StudentOut {
@@ -121,6 +113,6 @@ export interface StudentOut {
 }
 
 export interface StudentProgress {
-  enrollments: EnrollmentOut[];
+  enrollments: { course_id: number; enrolled_at: string }[];
   completed_lessons: { lesson_id: number; completed_at: string }[];
 }
