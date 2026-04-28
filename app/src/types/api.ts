@@ -117,3 +117,61 @@ export interface StudentProgress {
   enrollments: { course_id: number; enrolled_at: string }[];
   completed_lessons: { lesson_id: number; completed_at: string }[];
 }
+
+export interface MyProgress {
+  enrollments: { course_id: number; enrolled_at: string }[];
+  completed_lessons: { lesson_id: number; completed_at: string }[];
+  quiz_results: {
+    lesson_block_id: number;
+    score: number;
+    best_score: number;
+    max_score: number;
+    passed: boolean;
+    attempts: number;
+    completed_at: string;
+  }[];
+  practice_results: {
+    lesson_block_id: number;
+    selected_option_ids: string[];
+    is_correct: boolean;
+    completed_at: string;
+  }[];
+}
+
+export type AchievementMetric =
+  | 'lessons_completed'
+  | 'courses_completed'
+  | 'streak_days'
+  | 'perfect_quizzes'
+  | 'practice_count';
+
+export type AchievementOp = '>=' | '>' | '==';
+
+export type AchievementTier = 'bronze' | 'silver' | 'gold';
+
+export interface AchievementOut {
+  id: number;
+  title: string;
+  description: string;
+  icon: string;
+  color: string | null;
+  tier: AchievementTier;
+  metric: AchievementMetric;
+  op: AchievementOp;
+  threshold: number;
+  xp: number;
+  is_published: boolean;
+  sort_order: number;
+}
+
+export interface AchievementWithStatus extends AchievementOut {
+  unlocked: boolean;
+  unlocked_at: string | null;
+  current_value: number;
+}
+
+export interface StreakOut {
+  current_streak: number;
+  longest_streak: number;
+  last_active_date: string | null;
+}

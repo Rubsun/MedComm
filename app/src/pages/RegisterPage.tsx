@@ -1,85 +1,109 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useState, type ChangeEvent, type FormEvent } from 'react';
+import { useNavigate, Link, Navigate } from 'react-router-dom';
 import axios from 'axios';
-import { authApi } from '@/api/auth';
 import { useAuth } from '@/context/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Stethoscope } from 'lucide-react';
+import { authApi } from '@/api/auth';
+import { Button } from '@/components/medcomm';
+import { AuthShell, Field, FormError, Input } from './LoginPage';
 
 export default function RegisterPage() {
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ email: '', password: '', first_name: '', last_name: '' });
+  const [form, setForm] = useState({
+    email: '',
+    password: '',
+    first_name: '',
+    last_name: '',
+  });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleRegister = async () => {
+  if (isAuthenticated) return <Navigate to="/" replace />;
+
+  const set =
+    (field: keyof typeof form) =>
+    (e: ChangeEvent<HTMLInputElement>) =>
+      setForm((prev) => ({ ...prev, [field]: e.target.value }));
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
     setError('');
     setLoading(true);
     try {
       await authApi.register(form);
       await login(form.email, form.password);
       navigate('/');
-    } catch (e: unknown) {
-      if (axios.isAxiosError(e)) {
-        const detail = e.response?.data?.detail;
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const detail = err.response?.data?.detail;
         setError(typeof detail === 'string' ? detail : 'Ошибка регистрации');
       } else {
-        setError('Ошибка регистрации');
+        setError('Не удалось подключиться к серверу. Попробуйте позже.');
       }
     } finally {
       setLoading(false);
     }
   };
 
-  const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm(prev => ({ ...prev, [field]: e.target.value }));
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
-      <div className="max-w-md w-full">
-        <div className="flex items-center gap-3 mb-6 justify-center">
-          <div className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white p-3 rounded-xl">
-            <Stethoscope className="w-8 h-8" />
-          </div>
-          <h1 className="text-2xl font-bold text-slate-800">MedComm Platform</h1>
+    <AuthShell
+      heading="Регистрация"
+      subheading="Создайте аккаунт студента — займёт меньше минуты."
+    >
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <Field label="Имя">
+            <Input
+              value={form.first_name}
+              onChange={set('first_name')}
+              autoComplete="given-name"
+              required
+            />
+          </Field>
+          <Field label="Фамилия">
+            <Input
+              value={form.last_name}
+              onChange={set('last_name')}
+              autoComplete="family-name"
+              required
+            />
+          </Field>
         </div>
-        <Card className="shadow-xl">
-          <CardHeader>
-            <CardTitle className="text-xl">Регистрация</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-sm font-medium text-slate-700">Имя</label>
-                <Input value={form.first_name} onChange={set('first_name')} />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-slate-700">Фамилия</label>
-                <Input value={form.last_name} onChange={set('last_name')} />
-              </div>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-slate-700">Email</label>
-              <Input type="email" value={form.email} onChange={set('email')} />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-slate-700">Пароль</label>
-              <Input type="password" value={form.password} onChange={set('password')} />
-            </div>
-            {error && <p className="text-sm text-red-500">{error}</p>}
-            <Button onClick={handleRegister} className="w-full" disabled={loading}>
-              {loading ? 'Регистрация...' : 'Создать аккаунт'}
-            </Button>
-            <p className="text-center text-sm text-slate-500">
-              Уже есть аккаунт?{' '}
-              <Link to="/login" className="text-blue-600 hover:underline">Войти</Link>
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+        <Field label="Email">
+          <Input
+            type="email"
+            value={form.email}
+            onChange={set('email')}
+            autoComplete="email"
+            placeholder="you@university.ru"
+            required
+          />
+        </Field>
+        <Field label="Пароль">
+          <Input
+            type="password"
+            value={form.password}
+            onChange={set('password')}
+            autoComplete="new-password"
+            placeholder="Минимум 8 символов"
+            minLength={8}
+            required
+          />
+        </Field>
+        {error && <FormError message={error} />}
+        <Button type="submit" full size="md" disabled={loading}>
+          {loading ? 'Создаём аккаунт…' : 'Создать аккаунт'}
+        </Button>
+        <div style={{ textAlign: 'center', fontSize: 12.5, color: 'var(--ink-500)' }}>
+          Уже есть аккаунт?{' '}
+          <Link
+            to="/login"
+            style={{ color: 'var(--teal-700)', fontWeight: 600, textDecoration: 'none' }}
+          >
+            Войти
+          </Link>
+        </div>
+      </form>
+    </AuthShell>
   );
 }

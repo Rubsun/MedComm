@@ -4,14 +4,62 @@
 
 @layer base {
   :root {
+    /* MedComm design tokens (новый дизайн) */
+    --teal-50: #ecfbfa;
+    --teal-100: #d1f5f2;
+    --teal-200: #a6ebe5;
+    --teal-400: #2dd4bf;
+    --teal-500: #14b8a6;
+    --teal-600: #0d9488;
+    --teal-700: #0f766e;
+    --teal-900: #134e4a;
+
+    --bg: #f7f8fa;
+    --bg-soft: #fafbfc;
+    --surface: #ffffff;
+    --line: #e6eaf0;
+    --line-soft: #eef1f5;
+    --line-strong: #d6dce5;
+
+    --ink-900: #0b1320;
+    --ink-800: #1e2a3d;
+    --ink-700: #36465e;
+    --ink-600: #56627a;
+    --ink-500: #79849a;
+    --ink-400: #9aa3b6;
+    --ink-300: #bfc6d3;
+
+    --success: #10b981;
+    --success-soft: #ecfdf5;
+    --warning: #f59e0b;
+    --warning-soft: #fffbeb;
+    --danger: #ef4444;
+    --danger-soft: #fef2f2;
+    --info: #3b82f6;
+    --info-soft: #eff6ff;
+    --indigo: #4f46e5;
+    --rose: #e11d48;
+
+    --r-sm: 8px;
+    --r-md: 10px;
+    --r-lg: 14px;
+    --r-xl: 18px;
+
+    --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+    --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+    --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06), 0 2px 4px rgba(15, 23, 42, 0.04);
+    --shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.1), 0 4px 8px rgba(15, 23, 42, 0.05);
+    --shadow-xl: 0 24px 60px rgba(15, 23, 42, 0.18);
+
+    /* shadcn HSL переменные — совместимость с уже сгенерированными ui/* компонентами */
     --background: 0 0% 100%;
     --foreground: 240 10% 3.9%;
     --card: 0 0% 100%;
     --card-foreground: 240 10% 3.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 3.9%;
-    --primary: 240 5.9% 10%;
-    --primary-foreground: 0 0% 98%;
+    --primary: 174 80% 29%; /* teal-700 */
+    --primary-foreground: 0 0% 100%;
     --secondary: 240 4.8% 95.9%;
     --secondary-foreground: 240 5.9% 10%;
     --muted: 240 4.8% 95.9%;
@@ -22,54 +70,179 @@
     --destructive-foreground: 0 0% 98%;
     --border: 240 5.9% 90%;
     --input: 240 5.9% 90%;
-    --ring: 240 5.9% 10%;
+    --ring: 174 80% 29%;
     --radius: 0.625rem;
-    --sidebar-background: 0 0% 98%;
+    --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-primary: 174 80% 29%;
+    --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 240 4.8% 95.9%;
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-
-  .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-ring: 174 80% 29%;
   }
 }
 
 @layer base {
   * {
+    box-sizing: border-box;
     @apply border-border;
   }
+  html,
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
+  }
   body {
-    @apply bg-background text-foreground;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--ink-800);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5 {
+    font-family: 'Inter Tight', 'Inter', sans-serif;
+    color: var(--ink-900);
+    margin: 0;
+    letter-spacing: -0.015em;
+    font-weight: 600;
+  }
+  .mono {
+    font-family: 'JetBrains Mono', monospace;
+    font-feature-settings: 'tnum';
+  }
+  .num {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+  }
+  button {
+    font-family: inherit;
+  }
+  button:focus-visible,
+  input:focus-visible,
+  [role='button']:focus-visible {
+    outline: 2px solid var(--teal-500);
+    outline-offset: 2px;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #cbd2dc;
+    border-radius: 8px;
+    border: 2px solid var(--bg);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #a8b0bd;
+  }
+}
+
+@layer utilities {
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  @keyframes mc-shimmer {
+    0% {
+      background-position: -1000px 0;
+    }
+    100% {
+      background-position: 1000px 0;
+    }
+  }
+
+  .anim-fade {
+    animation: fadeIn 0.25s ease both;
+  }
+  .anim-up {
+    animation: slideUp 0.3s ease both;
+  }
+  .anim-down {
+    animation: slideDown 0.25s ease both;
+  }
+  .anim-pop {
+    animation: scaleIn 0.25s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+  }
+
+  .skeleton {
+    background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+    background-size: 1000px 100%;
+    animation: mc-shimmer 1.5s infinite linear;
+  }
+
+  /* Базовая типографика для текстового контента (TextBlock и тп) */
+  .prose {
+    color: var(--ink-700);
+    line-height: 1.65;
+    font-size: 14.5px;
+  }
+  .prose p { margin: 0 0 1rem; }
+  .prose strong { color: var(--ink-900); font-weight: 600; }
+  .prose em { font-style: italic; }
+  .prose ul { list-style-type: disc; padding-left: 1.5rem; margin: 0 0 1rem; }
+  .prose ol { list-style-type: decimal; padding-left: 1.5rem; margin: 0 0 1rem; }
+  .prose li { margin-bottom: 0.4rem; }
+  .prose h1, .prose h2, .prose h3, .prose h4 {
+    color: var(--ink-900); font-weight: 600; margin: 1.5rem 0 0.75rem;
+    font-family: 'Inter Tight', 'Inter', sans-serif;
+  }
+  .prose h1 { font-size: 1.5rem; }
+  .prose h2 { font-size: 1.25rem; }
+  .prose h3 { font-size: 1.1rem; }
+  .prose a { color: var(--teal-700); text-decoration: underline; }
+  .prose code {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.9em;
+    padding: 2px 5px; border-radius: 4px; background: var(--bg-soft);
+    border: 1px solid var(--line-soft); color: var(--ink-800);
+  }
+  .prose blockquote {
+    border-left: 3px solid var(--teal-500); padding: 4px 14px;
+    margin: 0 0 1rem; color: var(--ink-700); background: var(--bg-soft);
+    border-radius: 0 8px 8px 0;
   }
 }

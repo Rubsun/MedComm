@@ -1,7 +1,14 @@
 import { apiClient } from './client';
-import type { EnrollmentOut, PracticeResultOut, QuizResultOut } from '@/types/api';
+import type {
+  EnrollmentOut,
+  MyProgress,
+  PracticeResultOut,
+  QuizResultOut,
+} from '@/types/api';
 
 export const progressApi = {
+  me: () => apiClient.get<MyProgress>('/api/progress/me'),
+
   enroll: (courseId: number) =>
     apiClient.post<EnrollmentOut>('/api/progress/enroll', { course_id: courseId }),
 

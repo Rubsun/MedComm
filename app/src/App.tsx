@@ -6,7 +6,9 @@ import LessonPage from '@/pages/LessonPage';
 import Profile from '@/pages/Profile';
 import LoginPage from '@/pages/LoginPage';
 import RegisterPage from '@/pages/RegisterPage';
+import ProgramPage from '@/pages/ProgramPage';
 import AdminLayout from '@/pages/admin/AdminLayout';
+import AdminOverviewPage from '@/pages/admin/AdminOverviewPage';
 import ProgramsPage from '@/pages/admin/ProgramsPage';
 import CoursesPage from '@/pages/admin/CoursesPage';
 import LessonsPage from '@/pages/admin/LessonsPage';
@@ -14,32 +16,41 @@ import LessonEditorPage from '@/pages/admin/LessonEditorPage';
 import StudentsPage from '@/pages/admin/StudentsPage';
 import StudentProgressPage from '@/pages/admin/StudentProgressPage';
 import AnalyticsPage from '@/pages/admin/AnalyticsPage';
+import AchievementsAdminPage from '@/pages/admin/AchievementsAdminPage';
 
-// ============================================
-// PROTECTED ROUTE
-// ============================================
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
-
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center">Загрузка...</div>;
+  if (isLoading) return <LoadingScreen />;
   if (!isAuthenticated) return <Navigate to="/login" />;
   return <>{children}</>;
 }
 
-// ============================================
-// ADMIN ROUTE
-// ============================================
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isAdmin, isLoading } = useAuth();
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center">Загрузка...</div>;
+  if (isLoading) return <LoadingScreen />;
   if (!isAuthenticated) return <Navigate to="/login" />;
   if (!isAdmin) return <Navigate to="/" />;
   return <>{children}</>;
 }
 
-// ============================================
-// MAIN APP
-// ============================================
+function LoadingScreen() {
+  return (
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'var(--bg)',
+        color: 'var(--ink-500)',
+        fontSize: 13,
+      }}
+    >
+      Загрузка…
+    </div>
+  );
+}
+
 function App() {
   return (
     <AuthProvider>
@@ -47,21 +58,38 @@ function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
-          <Route path="/" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <AppLayout />
+              </ProtectedRoute>
+            }
+          >
             <Route index element={<Dashboard />} />
+            <Route path="program" element={<ProgramPage />} />
+            <Route path="program/:programId" element={<ProgramPage />} />
             <Route path="lesson/:lessonId" element={<LessonPage />} />
             <Route path="profile" element={<Profile />} />
             <Route path="achievements" element={<Profile />} />
           </Route>
-          <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
-            <Route index element={<Navigate to="/admin/programs" />} />
+          <Route
+            path="/admin"
+            element={
+              <AdminRoute>
+                <AdminLayout />
+              </AdminRoute>
+            }
+          >
+            <Route index element={<AdminOverviewPage />} />
+            <Route path="analytics" element={<AnalyticsPage />} />
             <Route path="programs" element={<ProgramsPage />} />
             <Route path="programs/:programId/courses" element={<CoursesPage />} />
             <Route path="courses/:courseId/lessons" element={<LessonsPage />} />
             <Route path="lessons/:lessonId/editor" element={<LessonEditorPage />} />
             <Route path="students" element={<StudentsPage />} />
             <Route path="students/:studentId" element={<StudentProgressPage />} />
-            <Route path="analytics" element={<AnalyticsPage />} />
+            <Route path="achievements" element={<AchievementsAdminPage />} />
           </Route>
         </Routes>
       </BrowserRouter>

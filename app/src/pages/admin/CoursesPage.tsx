@@ -1,149 +1,322 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { DndContext, closestCenter } from '@dnd-kit/core';
-import type { DragEndEvent } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
+import { useNavigate, useParams } from 'react-router-dom';
+import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  arrayMove,
+  useSortable,
+} from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { coursesApi } from '@/api/courses';
-import type { CourseOut } from '@/types/api';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
-import { Plus, ChevronRight, Eye, EyeOff, Pencil, Trash2, ArrowLeft, GripVertical } from 'lucide-react';
-
-function SortableCourse({
-  c,
-  editingId, editTitle,
-  onEdit, onEditTitle, onSave, onCancelEdit,
-  onPublish, onDelete,
-}: {
-  c: CourseOut;
-  editingId: number | null;
-  editTitle: string;
-  onEdit: (id: number, title: string) => void;
-  onEditTitle: (t: string) => void;
-  onSave: (id: number) => void;
-  onCancelEdit: () => void;
-  onPublish: (id: number) => void;
-  onDelete: (id: number) => void;
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: c.id });
-  const style = { transform: CSS.Transform.toString(transform), transition };
-
-  return (
-    <div ref={setNodeRef} style={style}>
-      <Card>
-        <CardContent className="p-4 flex items-center gap-3">
-          <button {...attributes} {...listeners} className="cursor-grab text-slate-400 hover:text-slate-600">
-            <GripVertical className="w-4 h-4" />
-          </button>
-          {editingId === c.id ? (
-            <>
-              <Input value={editTitle} onChange={e => onEditTitle(e.target.value)} className="flex-1" autoFocus />
-              <Button size="sm" onClick={() => onSave(c.id)}>Сохранить</Button>
-              <Button size="sm" variant="ghost" onClick={onCancelEdit}>Отмена</Button>
-            </>
-          ) : (
-            <>
-              <div className="flex-1 font-medium">{c.title}</div>
-              <Badge variant={c.is_published ? 'default' : 'secondary'}>{c.is_published ? 'Опубликован' : 'Черновик'}</Badge>
-              <Button size="icon" variant="ghost" onClick={() => onPublish(c.id)}>
-                {c.is_published ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </Button>
-              <Button size="icon" variant="ghost" onClick={() => onEdit(c.id, c.title)}>
-                <Pencil className="w-4 h-4" />
-              </Button>
-              <Button size="icon" variant="ghost" onClick={() => onDelete(c.id)}>
-                <Trash2 className="w-4 h-4 text-red-500" />
-              </Button>
-              <Link to={`/admin/courses/${c.id}/lessons`}>
-                <Button size="icon" variant="ghost"><ChevronRight className="w-4 h-4" /></Button>
-              </Link>
-            </>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
+import { programsApi } from '@/api/programs';
+import type { CourseOut, ProgramOut } from '@/types/api';
+import { Badge, Button, Card, Empty, Icon } from '@/components/medcomm';
 
 export default function CoursesPage() {
   const { programId } = useParams<{ programId: string }>();
   const pid = Number(programId);
+  const navigate = useNavigate();
+  const [program, setProgram] = useState<ProgramOut | null>(null);
   const [courses, setCourses] = useState<CourseOut[]>([]);
+  const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editTitle, setEditTitle] = useState('');
 
-  const load = useCallback(() => coursesApi.list(pid).then(r => setCourses(r.data)), [pid]);
-  useEffect(() => { load(); }, [load]);
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [progRes, coursesRes] = await Promise.all([
+        programsApi.get(pid),
+        coursesApi.list(pid),
+      ]);
+      setProgram(progRes.data);
+      setCourses(coursesRes.data);
+    } finally {
+      setLoading(false);
+    }
+  }, [pid]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const handleCreate = async () => {
     if (!newTitle.trim()) return;
     await coursesApi.create({ program_id: pid, title: newTitle.trim(), description: '' });
-    setNewTitle(''); setCreating(false); load();
+    setNewTitle('');
+    setCreating(false);
+    await load();
   };
 
-  const handlePublish = async (id: number) => { await coursesApi.publish(id); load(); };
+  const handlePublish = async (id: number) => {
+    await coursesApi.publish(id);
+    await load();
+  };
+
   const handleDelete = async (id: number) => {
     if (!confirm('Удалить курс?')) return;
-    await coursesApi.delete(id); load();
+    await coursesApi.delete(id);
+    await load();
   };
-  const handleEdit = async (id: number) => {
-    await coursesApi.update(id, { title: editTitle });
-    setEditingId(null); load();
+
+  const handleSaveEdit = async (id: number) => {
+    if (!editTitle.trim()) return;
+    await coursesApi.update(id, { title: editTitle.trim() });
+    setEditingId(null);
+    await load();
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    const oldIndex = courses.findIndex(c => c.id === active.id);
-    const newIndex = courses.findIndex(c => c.id === over.id);
+    const oldIndex = courses.findIndex((c) => c.id === active.id);
+    const newIndex = courses.findIndex((c) => c.id === over.id);
     const reordered = arrayMove(courses, oldIndex, newIndex);
     setCourses(reordered);
     await coursesApi.reorder(reordered.map((c, i) => ({ id: c.id, sort_order: i })));
-    load();
   };
 
   return (
-    <div className="p-6 space-y-4">
-      <div className="flex items-center gap-3 mb-4">
-        <Link to="/admin/programs"><Button variant="ghost" size="icon"><ArrowLeft className="w-4 h-4" /></Button></Link>
-        <h1 className="text-xl font-bold text-slate-800">Курсы</h1>
-        <div className="flex-1" />
-        <Button onClick={() => setCreating(true)} size="sm" className="gap-2"><Plus className="w-4 h-4" />Добавить</Button>
+    <div style={{ padding: '24px 32px', maxWidth: 1100, margin: '0 auto' }}>
+      <Button
+        variant="ghost"
+        size="sm"
+        icon="chevronLeft"
+        onClick={() => navigate('/admin/programs')}
+        style={{ marginBottom: 14 }}
+      >
+        К программам
+      </Button>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 14,
+          marginBottom: 22,
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <h1 style={{ fontSize: 22 }}>{program?.title ?? 'Программа'}</h1>
+          <p style={{ fontSize: 13, color: 'var(--ink-500)', marginTop: 4 }}>
+            Курсы внутри программы · {courses.length}{' '}
+            {pluralize(courses.length, 'курс', 'курса', 'курсов')}
+          </p>
+        </div>
+        <Button variant="primary" size="sm" icon="plus" onClick={() => setCreating(true)}>
+          Новый курс
+        </Button>
       </div>
 
       {creating && (
-        <Card><CardContent className="p-4 flex gap-2">
-          <Input placeholder="Название курса" value={newTitle} onChange={e => setNewTitle(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleCreate()} autoFocus />
-          <Button onClick={handleCreate}>Создать</Button>
-          <Button variant="ghost" onClick={() => setCreating(false)}>Отмена</Button>
-        </CardContent></Card>
+        <Card padding={16} style={{ marginBottom: 14 }}>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <InlineInput
+              autoFocus
+              placeholder="Название курса"
+              value={newTitle}
+              onChange={setNewTitle}
+              onEnter={handleCreate}
+            />
+            <Button variant="primary" size="sm" onClick={handleCreate}>
+              Создать
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setCreating(false)}>
+              Отмена
+            </Button>
+          </div>
+        </Card>
       )}
 
-      <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={courses.map(c => c.id)} strategy={verticalListSortingStrategy}>
-          <div className="space-y-2">
-            {courses.map(c => (
-              <SortableCourse
-                key={c.id}
-                c={c}
-                editingId={editingId}
-                editTitle={editTitle}
-                onEdit={(id, title) => { setEditingId(id); setEditTitle(title); }}
-                onEditTitle={setEditTitle}
-                onSave={handleEdit}
-                onCancelEdit={() => setEditingId(null)}
-                onPublish={handlePublish}
-                onDelete={handleDelete}
-              />
-            ))}
-          </div>
-        </SortableContext>
-      </DndContext>
+      {loading ? (
+        <div style={{ padding: 24, fontSize: 13, color: 'var(--ink-500)' }}>Загрузка…</div>
+      ) : courses.length === 0 ? (
+        <Empty
+          icon="book"
+          title="Курсов пока нет"
+          description="Добавьте первый курс — внутри будут модули и уроки."
+        />
+      ) : (
+        <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={courses.map((c) => c.id)} strategy={verticalListSortingStrategy}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {courses.map((c) => (
+                <SortableCourseRow
+                  key={c.id}
+                  course={c}
+                  isEditing={editingId === c.id}
+                  editTitle={editTitle}
+                  onStartEdit={() => {
+                    setEditingId(c.id);
+                    setEditTitle(c.title);
+                  }}
+                  onChangeEdit={setEditTitle}
+                  onSaveEdit={() => handleSaveEdit(c.id)}
+                  onCancelEdit={() => setEditingId(null)}
+                  onTogglePublish={() => handlePublish(c.id)}
+                  onDelete={() => handleDelete(c.id)}
+                  onOpen={() => navigate(`/admin/courses/${c.id}/lessons`)}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
+      )}
     </div>
   );
+}
+
+function SortableCourseRow({
+  course,
+  isEditing,
+  editTitle,
+  onStartEdit,
+  onChangeEdit,
+  onSaveEdit,
+  onCancelEdit,
+  onTogglePublish,
+  onDelete,
+  onOpen,
+}: {
+  course: CourseOut;
+  isEditing: boolean;
+  editTitle: string;
+  onStartEdit: () => void;
+  onChangeEdit: (v: string) => void;
+  onSaveEdit: () => void;
+  onCancelEdit: () => void;
+  onTogglePublish: () => void;
+  onDelete: () => void;
+  onOpen: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: course.id,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.6 : 1,
+      }}
+    >
+      <Card padding={0}>
+        <div style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button
+            {...attributes}
+            {...listeners}
+            style={{
+              cursor: 'grab',
+              background: 'none',
+              border: 'none',
+              color: 'var(--ink-300)',
+              padding: 4,
+            }}
+          >
+            <Icon name="drag" size={16} />
+          </button>
+          {isEditing ? (
+            <>
+              <InlineInput value={editTitle} onChange={onChangeEdit} onEnter={onSaveEdit} autoFocus />
+              <Button variant="primary" size="sm" onClick={onSaveEdit}>
+                Сохранить
+              </Button>
+              <Button variant="ghost" size="sm" onClick={onCancelEdit}>
+                Отмена
+              </Button>
+            </>
+          ) : (
+            <>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink-900)' }}>
+                  {course.title}
+                </div>
+                {course.description && (
+                  <div style={{ fontSize: 12, color: 'var(--ink-500)', marginTop: 2 }}>
+                    {course.description}
+                  </div>
+                )}
+              </div>
+              {course.is_published ? (
+                <Badge tone="success" size="sm" dot>
+                  Опубликован
+                </Badge>
+              ) : (
+                <Badge tone="neutral" size="sm">
+                  Черновик
+                </Badge>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={course.is_published ? 'eyeOff' : 'eye'}
+                onClick={onTogglePublish}
+              >
+                {course.is_published ? 'Снять' : 'Опубликовать'}
+              </Button>
+              <Button variant="ghost" size="sm" icon="edit" onClick={onStartEdit}>
+                Изменить
+              </Button>
+              <Button variant="danger" size="sm" icon="trash" onClick={onDelete}>
+                Удалить
+              </Button>
+              <Button variant="primary" size="sm" iconRight="arrowRight" onClick={onOpen}>
+                Уроки
+              </Button>
+            </>
+          )}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+function InlineInput({
+  value,
+  onChange,
+  onEnter,
+  placeholder,
+  autoFocus,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onEnter?: () => void;
+  placeholder?: string;
+  autoFocus?: boolean;
+}) {
+  return (
+    <input
+      autoFocus={autoFocus}
+      placeholder={placeholder}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' && onEnter) onEnter();
+      }}
+      style={{
+        flex: 1,
+        height: 36,
+        padding: '0 12px',
+        border: '1px solid var(--line-strong)',
+        borderRadius: 8,
+        background: 'var(--surface)',
+        fontSize: 13.5,
+        color: 'var(--ink-900)',
+        fontFamily: 'inherit',
+        outline: 'none',
+      }}
+    />
+  );
+}
+
+function pluralize(n: number, one: string, few: string, many: string) {
+  const m10 = n % 10;
+  const m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return one;
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
+  return many;
 }

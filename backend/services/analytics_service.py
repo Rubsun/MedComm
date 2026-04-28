@@ -1,5 +1,7 @@
+from datetime import datetime, timedelta, timezone
+
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, Integer
+from sqlalchemy import select, func, Integer, distinct
 
 from backend.models.user import User
 from backend.models.content import Course, Lesson, LessonBlock
@@ -18,8 +20,15 @@ async def get_overview(db: AsyncSession) -> dict:
         .order_by(Course.id)
     )).all()
 
+    cutoff = datetime.now(timezone.utc) - timedelta(days=30)
+    active_students_last_30_days = (await db.execute(
+        select(func.count(distinct(UserProgress.user_id)))
+        .where(UserProgress.completed_at >= cutoff)
+    )).scalar_one()
+
     return {
         "total_students": total_students,
+        "active_students_last_30_days": int(active_students_last_30_days or 0),
         "enrollments_per_course": [
             {"course_id": r.id, "course_title": r.title, "enrollment_count": r.count}
             for r in enrollments

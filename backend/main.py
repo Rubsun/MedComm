@@ -12,8 +12,9 @@ from backend.routers.media import router as media_router
 from backend.routers.progress import router as progress_router
 from backend.routers.analytics import router as analytics_router
 from backend.routers.students import router as students_router
+from backend.routers.achievements import router as achievements_router
 
-app = FastAPI(title="MedComm API")
+app = FastAPI(title="Доктор, поговорим? API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -36,6 +37,7 @@ app.include_router(media_router)
 app.include_router(progress_router)
 app.include_router(analytics_router)
 app.include_router(students_router)
+app.include_router(achievements_router)
 
 
 @app.get("/api/health")

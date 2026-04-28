@@ -1,11 +1,9 @@
-import { useEffect, useState, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { lessonsApi } from '@/api/lessons';
-import type { LessonOut, LessonBlockOut } from '@/types/api';
+import type { LessonBlockOut, LessonOut } from '@/types/api';
 import BlockEditorPanel from '@/components/admin/BlockEditorPanel';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { Badge, Button } from '@/components/medcomm';
 
 export default function LessonEditorPage() {
   const { lessonId } = useParams<{ lessonId: string }>();
@@ -14,14 +12,17 @@ export default function LessonEditorPage() {
   const [lesson, setLesson] = useState<LessonOut | null>(null);
   const [blocks, setBlocks] = useState<LessonBlockOut[]>([]);
 
-  const loadBlocks = useCallback(() =>
-    lessonsApi.getBlocks(lid).then(r =>
-      setBlocks(r.data.sort((a, b) => a.sort_order - b.sort_order))
-    ), [lid]);
+  const loadBlocks = useCallback(
+    () =>
+      lessonsApi
+        .getBlocks(lid)
+        .then((r) => setBlocks(r.data.sort((a, b) => a.sort_order - b.sort_order))),
+    [lid],
+  );
 
   useEffect(() => {
-    lessonsApi.get(lid).then(r => setLesson(r.data));
-    loadBlocks();
+    void lessonsApi.get(lid).then((r) => setLesson(r.data));
+    void loadBlocks();
   }, [lid, loadBlocks]);
 
   const handlePublish = async () => {
@@ -30,23 +31,88 @@ export default function LessonEditorPage() {
     setLesson(r.data);
   };
 
-  if (!lesson) return <div className="p-6 text-slate-500">Загрузка...</div>;
+  if (!lesson) {
+    return (
+      <div style={{ padding: 24, fontSize: 13, color: 'var(--ink-500)' }}>Загрузка…</div>
+    );
+  }
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="border-b px-6 py-3 flex items-center gap-3 bg-white">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}><ArrowLeft className="w-4 h-4" /></Button>
-        <h1 className="font-bold text-slate-800 flex-1">{lesson.title}</h1>
-        <Badge variant={lesson.is_published ? 'default' : 'secondary'}>
-          {lesson.is_published ? 'Опубликован' : 'Черновик'}
-        </Badge>
-        <Button size="sm" variant="outline" className="gap-2" onClick={handlePublish}>
-          {lesson.is_published ? <><EyeOff className="w-4 h-4" />Снять</> : <><Eye className="w-4 h-4" />Опубликовать</>}
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          padding: '14px 24px',
+          borderBottom: '1px solid var(--line)',
+          background: 'var(--surface)',
+        }}
+      >
+        <Button
+          variant="ghost"
+          size="sm"
+          icon="chevronLeft"
+          onClick={() => navigate(-1)}
+        >
+          Назад
+        </Button>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              letterSpacing: '0.06em',
+              textTransform: 'uppercase',
+              color: 'var(--ink-500)',
+            }}
+          >
+            Редактор урока
+          </div>
+          <h1
+            style={{
+              fontSize: 18,
+              fontWeight: 600,
+              color: 'var(--ink-900)',
+              marginTop: 2,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {lesson.title}
+          </h1>
+        </div>
+        {lesson.is_published ? (
+          <Badge tone="success" size="sm" dot>
+            Опубликован
+          </Badge>
+        ) : (
+          <Badge tone="neutral" size="sm">
+            Черновик
+          </Badge>
+        )}
+        <Button
+          variant={lesson.is_published ? 'secondary' : 'primary'}
+          size="sm"
+          icon={lesson.is_published ? 'eyeOff' : 'eye'}
+          onClick={handlePublish}
+        >
+          {lesson.is_published ? 'Снять с публикации' : 'Опубликовать'}
         </Button>
       </div>
 
-      <div className="flex-1 overflow-auto p-6">
-        <BlockEditorPanel lessonId={lid} blocks={blocks} onBlocksChange={loadBlocks} />
+      <div
+        style={{
+          flex: 1,
+          overflow: 'auto',
+          padding: 24,
+          background: 'var(--bg)',
+        }}
+      >
+        <div style={{ maxWidth: 900, margin: '0 auto' }}>
+          <BlockEditorPanel lessonId={lid} blocks={blocks} onBlocksChange={loadBlocks} />
+        </div>
       </div>
     </div>
   );

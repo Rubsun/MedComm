@@ -1,114 +1,641 @@
-import { useEffect, useState, useCallback } from 'react';
-import { Link, useParams, useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  arrayMove,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { coursesApi } from '@/api/courses';
 import { modulesApi } from '@/api/modules';
 import { lessonsApi } from '@/api/lessons';
-import type { ModuleOut, LessonOut } from '@/types/api';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Lock, Unlock, Trash2, Eye, EyeOff, ArrowLeft, ExternalLink } from 'lucide-react';
+import type { CourseOut, LessonOut, ModuleOut } from '@/types/api';
+import { Badge, Button, Card, Empty, Icon } from '@/components/medcomm';
 
 export default function LessonsPage() {
   const { courseId } = useParams<{ courseId: string }>();
   const cid = Number(courseId);
   const navigate = useNavigate();
+  const [course, setCourse] = useState<CourseOut | null>(null);
   const [modules, setModules] = useState<ModuleOut[]>([]);
   const [lessonsByModule, setLessonsByModule] = useState<Record<number, LessonOut[]>>({});
-  const [newModuleTitle, setNewModuleTitle] = useState('');
+  const [loading, setLoading] = useState(true);
   const [creatingModule, setCreatingModule] = useState(false);
-  const [newLessonTitles, setNewLessonTitles] = useState<Record<number, string>>({});
+  const [newModuleTitle, setNewModuleTitle] = useState('');
+  const [editingModuleId, setEditingModuleId] = useState<number | null>(null);
+  const [editModuleTitle, setEditModuleTitle] = useState('');
+  const [creatingLessonInModule, setCreatingLessonInModule] = useState<number | null>(null);
+  const [newLessonTitle, setNewLessonTitle] = useState('');
+  const [editingLessonId, setEditingLessonId] = useState<number | null>(null);
+  const [editLessonTitle, setEditLessonTitle] = useState('');
 
   const load = useCallback(async () => {
-    const mods = (await modulesApi.list(cid)).data;
-    setModules(mods);
-    const byMod: Record<number, LessonOut[]> = {};
-    await Promise.all(mods.map(async m => {
-      byMod[m.id] = (await lessonsApi.list(m.id)).data;
-    }));
-    setLessonsByModule(byMod);
+    setLoading(true);
+    try {
+      const [courseRes, modsRes] = await Promise.all([
+        coursesApi.get(cid),
+        modulesApi.list(cid),
+      ]);
+      setCourse(courseRes.data);
+      const mods = modsRes.data;
+      setModules(mods);
+      const byMod: Record<number, LessonOut[]> = {};
+      await Promise.all(
+        mods.map(async (m) => {
+          byMod[m.id] = (await lessonsApi.list(m.id)).data;
+        }),
+      );
+      setLessonsByModule(byMod);
+    } finally {
+      setLoading(false);
+    }
   }, [cid]);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
-  const createModule = async () => {
+  const handleCreateModule = async () => {
     if (!newModuleTitle.trim()) return;
     await modulesApi.create({ course_id: cid, title: newModuleTitle.trim(), description: '' });
-    setNewModuleTitle(''); setCreatingModule(false); load();
+    setNewModuleTitle('');
+    setCreatingModule(false);
+    await load();
   };
 
-  const createLesson = async (moduleId: number) => {
-    const title = newLessonTitles[moduleId];
-    if (!title?.trim()) return;
-    await lessonsApi.create({ module_id: moduleId, title: title.trim(), description: '', type: 'theory', duration_min: 10 });
-    setNewLessonTitles(prev => ({ ...prev, [moduleId]: '' }));
-    load();
+  const handleSaveModuleEdit = async (id: number) => {
+    if (!editModuleTitle.trim()) return;
+    await modulesApi.update(id, { title: editModuleTitle.trim() });
+    setEditingModuleId(null);
+    await load();
   };
+
+  const handleLockModule = async (id: number) => {
+    await modulesApi.lock(id);
+    await load();
+  };
+
+  const handleDeleteModule = async (id: number) => {
+    if (!confirm('Удалить модуль вместе со всеми уроками?')) return;
+    await modulesApi.delete(id);
+    await load();
+  };
+
+  const handleCreateLesson = async (moduleId: number) => {
+    if (!newLessonTitle.trim()) return;
+    await lessonsApi.create({
+      module_id: moduleId,
+      title: newLessonTitle.trim(),
+      description: '',
+      type: 'theory',
+      duration_min: 10,
+    });
+    setNewLessonTitle('');
+    setCreatingLessonInModule(null);
+    await load();
+  };
+
+  const handleSaveLessonEdit = async (id: number) => {
+    if (!editLessonTitle.trim()) return;
+    await lessonsApi.update(id, { title: editLessonTitle.trim() });
+    setEditingLessonId(null);
+    await load();
+  };
+
+  const handlePublishLesson = async (id: number) => {
+    await lessonsApi.publish(id);
+    await load();
+  };
+
+  const handleDeleteLesson = async (id: number) => {
+    if (!confirm('Удалить урок?')) return;
+    await lessonsApi.delete(id);
+    await load();
+  };
+
+  const handleModulesDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = modules.findIndex((m) => m.id === active.id);
+    const newIndex = modules.findIndex((m) => m.id === over.id);
+    const reordered = arrayMove(modules, oldIndex, newIndex);
+    setModules(reordered);
+    await modulesApi.reorder(reordered.map((m, i) => ({ id: m.id, sort_order: i })));
+  };
+
+  const handleLessonsDragEnd = async (moduleId: number, event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const lessons = lessonsByModule[moduleId] ?? [];
+    const oldIndex = lessons.findIndex((l) => l.id === active.id);
+    const newIndex = lessons.findIndex((l) => l.id === over.id);
+    const reordered = arrayMove(lessons, oldIndex, newIndex);
+    setLessonsByModule((prev) => ({ ...prev, [moduleId]: reordered }));
+    await lessonsApi.reorder(reordered.map((l, i) => ({ id: l.id, sort_order: i })));
+  };
+
+  const totalLessons = Object.values(lessonsByModule).reduce((acc, arr) => acc + arr.length, 0);
 
   return (
-    <div className="p-6 space-y-4">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}><ArrowLeft className="w-4 h-4" /></Button>
-        <h1 className="text-xl font-bold text-slate-800">Модули и уроки</h1>
-        <div className="flex-1" />
-        <Button size="sm" className="gap-2" onClick={() => setCreatingModule(true)}><Plus className="w-4 h-4" />Модуль</Button>
+    <div style={{ padding: '24px 32px', maxWidth: 1100, margin: '0 auto' }}>
+      <Button
+        variant="ghost"
+        size="sm"
+        icon="chevronLeft"
+        onClick={() =>
+          course
+            ? navigate(`/admin/programs/${course.program_id}/courses`)
+            : navigate('/admin/programs')
+        }
+        style={{ marginBottom: 14 }}
+      >
+        К курсам
+      </Button>
+
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 14,
+          marginBottom: 22,
+        }}
+      >
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h1 style={{ fontSize: 22 }}>{course?.title ?? 'Курс'}</h1>
+          <p style={{ fontSize: 13, color: 'var(--ink-500)', marginTop: 4 }}>
+            {modules.length} {pluralize(modules.length, 'модуль', 'модуля', 'модулей')} ·{' '}
+            {totalLessons} {pluralize(totalLessons, 'урок', 'урока', 'уроков')}
+          </p>
+        </div>
+        <Button
+          variant="primary"
+          size="sm"
+          icon="plus"
+          onClick={() => setCreatingModule(true)}
+        >
+          Новый модуль
+        </Button>
       </div>
 
       {creatingModule && (
-        <div className="flex gap-2">
-          <Input placeholder="Название модуля" value={newModuleTitle} onChange={e => setNewModuleTitle(e.target.value)} onKeyDown={e => e.key === 'Enter' && createModule()} autoFocus />
-          <Button onClick={createModule}>Создать</Button>
-          <Button variant="ghost" onClick={() => setCreatingModule(false)}>Отмена</Button>
-        </div>
+        <Card padding={16} style={{ marginBottom: 14 }}>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <InlineInput
+              autoFocus
+              placeholder="Название модуля"
+              value={newModuleTitle}
+              onChange={setNewModuleTitle}
+              onEnter={handleCreateModule}
+            />
+            <Button variant="primary" size="sm" onClick={handleCreateModule}>
+              Создать
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setCreatingModule(false)}>
+              Отмена
+            </Button>
+          </div>
+        </Card>
       )}
 
-      {modules.map(m => (
-        <Card key={m.id}>
-          <CardHeader className="pb-2">
-            <div className="flex items-center gap-2">
-              <CardTitle className="text-base flex-1">{m.title}</CardTitle>
-              {m.is_locked && <Badge variant="secondary">Заблокирован</Badge>}
-              <Button size="icon" variant="ghost" onClick={async () => { await modulesApi.lock(m.id); load(); }}>
-                {m.is_locked ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-              </Button>
-              <Button size="icon" variant="ghost" onClick={async () => { if (confirm('Удалить модуль?')) { await modulesApi.delete(m.id); load(); } }}>
-                <Trash2 className="w-4 h-4 text-red-500" />
-              </Button>
+      {loading ? (
+        <div style={{ padding: 24, fontSize: 13, color: 'var(--ink-500)' }}>Загрузка…</div>
+      ) : modules.length === 0 ? (
+        <Empty
+          icon="layers"
+          title="Модулей пока нет"
+          description="Добавьте первый модуль — внутри будут уроки."
+        />
+      ) : (
+        <DndContext collisionDetection={closestCenter} onDragEnd={handleModulesDragEnd}>
+          <SortableContext
+            items={modules.map((m) => m.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {modules.map((m) => (
+                <SortableModuleCard
+                  key={m.id}
+                  module={m}
+                  lessons={lessonsByModule[m.id] ?? []}
+                  isEditing={editingModuleId === m.id}
+                  editTitle={editModuleTitle}
+                  onStartEdit={() => {
+                    setEditingModuleId(m.id);
+                    setEditModuleTitle(m.title);
+                  }}
+                  onChangeEdit={setEditModuleTitle}
+                  onSaveEdit={() => handleSaveModuleEdit(m.id)}
+                  onCancelEdit={() => setEditingModuleId(null)}
+                  onLock={() => handleLockModule(m.id)}
+                  onDelete={() => handleDeleteModule(m.id)}
+                  creatingLesson={creatingLessonInModule === m.id}
+                  newLessonTitle={newLessonTitle}
+                  onStartCreateLesson={() => {
+                    setCreatingLessonInModule(m.id);
+                    setNewLessonTitle('');
+                  }}
+                  onCancelCreateLesson={() => setCreatingLessonInModule(null)}
+                  onChangeNewLessonTitle={setNewLessonTitle}
+                  onCreateLesson={() => handleCreateLesson(m.id)}
+                  editingLessonId={editingLessonId}
+                  editLessonTitle={editLessonTitle}
+                  onStartEditLesson={(id, title) => {
+                    setEditingLessonId(id);
+                    setEditLessonTitle(title);
+                  }}
+                  onChangeEditLesson={setEditLessonTitle}
+                  onSaveEditLesson={(id) => handleSaveLessonEdit(id)}
+                  onCancelEditLesson={() => setEditingLessonId(null)}
+                  onPublishLesson={handlePublishLesson}
+                  onDeleteLesson={handleDeleteLesson}
+                  onOpenLesson={(id) => navigate(`/admin/lessons/${id}/editor`)}
+                  onLessonsDragEnd={(e) => handleLessonsDragEnd(m.id, e)}
+                />
+              ))}
             </div>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {(lessonsByModule[m.id] ?? []).map(l => (
-              <div key={l.id} className="flex items-center gap-2 p-2 bg-slate-50 rounded">
-                <span className="flex-1 text-sm">{l.title}</span>
-                <Badge variant={l.is_published ? 'default' : 'outline'} className="text-xs">
-                  {l.is_published ? 'Опубликован' : 'Черновик'}
-                </Badge>
-                <Button size="icon" variant="ghost" onClick={async () => { await lessonsApi.publish(l.id); load(); }}>
-                  {l.is_published ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                </Button>
-                <Link to={`/admin/lessons/${l.id}/editor`}>
-                  <Button size="icon" variant="ghost"><ExternalLink className="w-3 h-3" /></Button>
-                </Link>
-                <Button size="icon" variant="ghost" onClick={async () => { if (confirm('Удалить урок?')) { await lessonsApi.delete(l.id); load(); } }}>
-                  <Trash2 className="w-3 h-3 text-red-500" />
-                </Button>
-              </div>
-            ))}
-
-            <div className="flex gap-2 mt-2">
-              <Input
-                placeholder="Название урока"
-                className="h-8 text-sm"
-                value={newLessonTitles[m.id] ?? ''}
-                onChange={e => setNewLessonTitles(prev => ({ ...prev, [m.id]: e.target.value }))}
-                onKeyDown={e => e.key === 'Enter' && createLesson(m.id)}
-              />
-              <Button size="sm" onClick={() => createLesson(m.id)}>+</Button>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+          </SortableContext>
+        </DndContext>
+      )}
     </div>
   );
+}
+
+function SortableModuleCard({
+  module: mod,
+  lessons,
+  isEditing,
+  editTitle,
+  onStartEdit,
+  onChangeEdit,
+  onSaveEdit,
+  onCancelEdit,
+  onLock,
+  onDelete,
+  creatingLesson,
+  newLessonTitle,
+  onStartCreateLesson,
+  onCancelCreateLesson,
+  onChangeNewLessonTitle,
+  onCreateLesson,
+  editingLessonId,
+  editLessonTitle,
+  onStartEditLesson,
+  onChangeEditLesson,
+  onSaveEditLesson,
+  onCancelEditLesson,
+  onPublishLesson,
+  onDeleteLesson,
+  onOpenLesson,
+  onLessonsDragEnd,
+}: {
+  module: ModuleOut;
+  lessons: LessonOut[];
+  isEditing: boolean;
+  editTitle: string;
+  onStartEdit: () => void;
+  onChangeEdit: (v: string) => void;
+  onSaveEdit: () => void;
+  onCancelEdit: () => void;
+  onLock: () => void;
+  onDelete: () => void;
+  creatingLesson: boolean;
+  newLessonTitle: string;
+  onStartCreateLesson: () => void;
+  onCancelCreateLesson: () => void;
+  onChangeNewLessonTitle: (v: string) => void;
+  onCreateLesson: () => void;
+  editingLessonId: number | null;
+  editLessonTitle: string;
+  onStartEditLesson: (id: number, title: string) => void;
+  onChangeEditLesson: (v: string) => void;
+  onSaveEditLesson: (id: number) => void;
+  onCancelEditLesson: () => void;
+  onPublishLesson: (id: number) => void;
+  onDeleteLesson: (id: number) => void;
+  onOpenLesson: (id: number) => void;
+  onLessonsDragEnd: (event: DragEndEvent) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: mod.id,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.6 : 1,
+      }}
+    >
+      <Card padding={0}>
+        <div
+          style={{
+            padding: '14px 18px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            borderBottom: '1px solid var(--line)',
+          }}
+        >
+          <button
+            {...attributes}
+            {...listeners}
+            style={{
+              cursor: 'grab',
+              background: 'none',
+              border: 'none',
+              color: 'var(--ink-300)',
+              padding: 4,
+            }}
+            aria-label="Перетащить модуль"
+          >
+            <Icon name="drag" size={16} />
+          </button>
+          {isEditing ? (
+            <>
+              <InlineInput
+                value={editTitle}
+                onChange={onChangeEdit}
+                onEnter={onSaveEdit}
+                autoFocus
+              />
+              <Button variant="primary" size="sm" onClick={onSaveEdit}>
+                Сохранить
+              </Button>
+              <Button variant="ghost" size="sm" onClick={onCancelEdit}>
+                Отмена
+              </Button>
+            </>
+          ) : (
+            <>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div
+                  style={{
+                    fontSize: 14.5,
+                    fontWeight: 600,
+                    color: 'var(--ink-900)',
+                  }}
+                >
+                  {mod.title}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--ink-500)', marginTop: 2 }}>
+                  {lessons.length} {pluralize(lessons.length, 'урок', 'урока', 'уроков')}
+                </div>
+              </div>
+              {mod.is_locked ? (
+                <Badge tone="warning" size="sm">
+                  Заблокирован
+                </Badge>
+              ) : (
+                <Badge tone="neutral" size="sm">
+                  Открыт
+                </Badge>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={mod.is_locked ? 'unlock' : 'lock'}
+                onClick={onLock}
+              >
+                {mod.is_locked ? 'Разблокировать' : 'Заблокировать'}
+              </Button>
+              <Button variant="ghost" size="sm" icon="edit" onClick={onStartEdit}>
+                Изменить
+              </Button>
+              <Button variant="danger" size="sm" icon="trash" onClick={onDelete}>
+                Удалить
+              </Button>
+            </>
+          )}
+        </div>
+
+        <div style={{ padding: '8px 18px 14px' }}>
+          {lessons.length === 0 && !creatingLesson ? (
+            <div
+              style={{
+                padding: '14px 0',
+                fontSize: 13,
+                color: 'var(--ink-500)',
+                textAlign: 'center',
+              }}
+            >
+              В этом модуле ещё нет уроков
+            </div>
+          ) : (
+            <DndContext collisionDetection={closestCenter} onDragEnd={onLessonsDragEnd}>
+              <SortableContext
+                items={lessons.map((l) => l.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {lessons.map((l) => (
+                    <SortableLessonRow
+                      key={l.id}
+                      lesson={l}
+                      isEditing={editingLessonId === l.id}
+                      editTitle={editLessonTitle}
+                      onStartEdit={() => onStartEditLesson(l.id, l.title)}
+                      onChangeEdit={onChangeEditLesson}
+                      onSaveEdit={() => onSaveEditLesson(l.id)}
+                      onCancelEdit={onCancelEditLesson}
+                      onPublish={() => onPublishLesson(l.id)}
+                      onDelete={() => onDeleteLesson(l.id)}
+                      onOpen={() => onOpenLesson(l.id)}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+          )}
+
+          {creatingLesson ? (
+            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+              <InlineInput
+                autoFocus
+                placeholder="Название урока"
+                value={newLessonTitle}
+                onChange={onChangeNewLessonTitle}
+                onEnter={onCreateLesson}
+              />
+              <Button variant="primary" size="sm" onClick={onCreateLesson}>
+                Создать
+              </Button>
+              <Button variant="ghost" size="sm" onClick={onCancelCreateLesson}>
+                Отмена
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              icon="plus"
+              onClick={onStartCreateLesson}
+              style={{ marginTop: 10 }}
+            >
+              Добавить урок
+            </Button>
+          )}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+function SortableLessonRow({
+  lesson,
+  isEditing,
+  editTitle,
+  onStartEdit,
+  onChangeEdit,
+  onSaveEdit,
+  onCancelEdit,
+  onPublish,
+  onDelete,
+  onOpen,
+}: {
+  lesson: LessonOut;
+  isEditing: boolean;
+  editTitle: string;
+  onStartEdit: () => void;
+  onChangeEdit: (v: string) => void;
+  onSaveEdit: () => void;
+  onCancelEdit: () => void;
+  onPublish: () => void;
+  onDelete: () => void;
+  onOpen: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: lesson.id,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.6 : 1,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        padding: '8px 10px',
+        background: 'var(--surface-2)',
+        borderRadius: 8,
+      }}
+    >
+      <button
+        {...attributes}
+        {...listeners}
+        style={{
+          cursor: 'grab',
+          background: 'none',
+          border: 'none',
+          color: 'var(--ink-300)',
+          padding: 2,
+        }}
+        aria-label="Перетащить урок"
+      >
+        <Icon name="drag" size={14} />
+      </button>
+      {isEditing ? (
+        <>
+          <InlineInput
+            value={editTitle}
+            onChange={onChangeEdit}
+            onEnter={onSaveEdit}
+            autoFocus
+          />
+          <Button variant="primary" size="sm" onClick={onSaveEdit}>
+            Сохранить
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onCancelEdit}>
+            Отмена
+          </Button>
+        </>
+      ) : (
+        <>
+          <div style={{ flex: 1, minWidth: 0, fontSize: 13.5, color: 'var(--ink-900)' }}>
+            {lesson.title}
+          </div>
+          <span style={{ fontSize: 12, color: 'var(--ink-500)' }}>
+            {lesson.duration_min} мин
+          </span>
+          {lesson.is_published ? (
+            <Badge tone="success" size="sm" dot>
+              Опубликован
+            </Badge>
+          ) : (
+            <Badge tone="neutral" size="sm">
+              Черновик
+            </Badge>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={lesson.is_published ? 'eyeOff' : 'eye'}
+            onClick={onPublish}
+          />
+          <Button variant="ghost" size="sm" icon="edit" onClick={onStartEdit} />
+          <Button variant="danger" size="sm" icon="trash" onClick={onDelete} />
+          <Button
+            variant="primary"
+            size="sm"
+            iconRight="arrowRight"
+            onClick={onOpen}
+          >
+            Редактор
+          </Button>
+        </>
+      )}
+    </div>
+  );
+}
+
+function InlineInput({
+  value,
+  onChange,
+  onEnter,
+  placeholder,
+  autoFocus,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onEnter?: () => void;
+  placeholder?: string;
+  autoFocus?: boolean;
+}) {
+  return (
+    <input
+      autoFocus={autoFocus}
+      placeholder={placeholder}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' && onEnter) onEnter();
+      }}
+      style={{
+        flex: 1,
+        height: 36,
+        padding: '0 12px',
+        border: '1px solid var(--line-strong)',
+        borderRadius: 8,
+        background: 'var(--surface)',
+        fontSize: 13.5,
+        color: 'var(--ink-900)',
+        fontFamily: 'inherit',
+        outline: 'none',
+      }}
+    />
+  );
+}
+
+function pluralize(n: number, one: string, few: string, many: string) {
+  const m10 = n % 10;
+  const m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return one;
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
+  return many;
 }

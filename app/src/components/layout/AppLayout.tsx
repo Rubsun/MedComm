@@ -1,131 +1,132 @@
-import { useEffect, useState } from 'react';
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { useMemo } from 'react';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-import { useStore } from '@/store/useStore';
-import { programsApi } from '@/api/programs';
-import { coursesApi } from '@/api/courses';
-import { modulesApi } from '@/api/modules';
-import { lessonsApi } from '@/api/lessons';
-import type { ProgramOut, CourseOut, ModuleOut, LessonOut } from '@/types/api';
-import { ChevronDown, ChevronRight, Lock, Stethoscope, LogOut, LayoutDashboard, User } from 'lucide-react';
+import { Sidebar, type SidebarItem } from '@/components/medcomm';
 
-interface NavModule extends ModuleOut { lessons: LessonOut[] }
-interface NavCourse extends CourseOut { modules: NavModule[] }
-interface NavProgram extends ProgramOut { courses: NavCourse[] }
+const STUDENT_NAV: SidebarItem[] = [
+  { section: 'Обучение' },
+  { key: 'dashboard', label: 'Главная', icon: 'home' },
+  { key: 'program', label: 'Программа', icon: 'map' },
+  { section: 'Прогресс' },
+  { key: 'achievements', label: 'Достижения', icon: 'trophy' },
+  { key: 'profile', label: 'Профиль', icon: 'user' },
+];
+
+const KEY_TO_PATH: Record<string, string> = {
+  dashboard: '/',
+  program: '/program',
+  achievements: '/achievements',
+  profile: '/profile',
+};
 
 export default function AppLayout() {
-  const { user, logout } = useAuth();
-  const { sidebarOpen } = useStore();
+  const { user, logout, isAdmin } = useAuth();
   const navigate = useNavigate();
-  const [tree, setTree] = useState<NavProgram[]>([]);
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const location = useLocation();
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const programs = (await programsApi.list()).data;
-        const fullTree: NavProgram[] = await Promise.all(programs.map(async p => {
-          const courses = (await coursesApi.list(p.id)).data;
-          const fullCourses: NavCourse[] = await Promise.all(courses.map(async c => {
-            const modules = (await modulesApi.list(c.id)).data;
-            const fullModules: NavModule[] = await Promise.all(modules.map(async m => {
-              const lessons = (await lessonsApi.list(m.id)).data;
-              return { ...m, lessons };
-            }));
-            return { ...c, modules: fullModules };
-          }));
-          return { ...p, courses: fullCourses };
-        }));
-        setTree(fullTree);
-      } catch (err) {
-        console.error('Failed to load navigation tree', err);
-      }
-    })();
-  }, []);
+  const currentKey = useMemo(() => {
+    const p = location.pathname;
+    if (p === '/' || p === '') return 'dashboard';
+    if (p.startsWith('/program')) return 'program';
+    if (p.startsWith('/achievements')) return 'achievements';
+    if (p.startsWith('/profile')) return 'profile';
+    if (p.startsWith('/lesson')) return 'program'; // подсветим программу при чтении урока
+    return undefined;
+  }, [location.pathname]);
 
-  const toggle = (key: string) => setExpanded(prev => ({ ...prev, [key]: !prev[key] }));
+  const handleNav = (key: string) => {
+    const path = KEY_TO_PATH[key];
+    if (path) navigate(path);
+  };
 
-  const handleLogout = async () => { await logout(); navigate('/login'); };
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
 
   return (
-    <div className="flex h-screen bg-slate-50">
-      {/* Sidebar */}
-      {sidebarOpen && (
-        <div className="w-72 bg-white border-r flex flex-col overflow-hidden">
-          <div className="p-4 border-b flex items-center gap-2">
-            <div className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white p-2 rounded-lg">
-              <Stethoscope className="w-5 h-5" />
-            </div>
-            <div className="flex-1">
-              <div className="font-bold text-sm">MedComm</div>
-              <div className="text-xs text-slate-500">{user?.first_name} {user?.last_name}</div>
-            </div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-3 space-y-1">
-            <NavLink to="/" end className={({ isActive }) =>
-              `flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${isActive ? 'bg-blue-50 text-blue-700 font-medium' : 'text-slate-600 hover:bg-slate-100'}`
-            }>
-              <LayoutDashboard className="w-4 h-4" />Главная
-            </NavLink>
-
-            {tree.map(program => (
-              <div key={program.id}>
-                <button
-                  onClick={() => toggle(`p-${program.id}`)}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 rounded-lg"
-                >
-                  {expanded[`p-${program.id}`] ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-                  {program.title}
-                </button>
-                {expanded[`p-${program.id}`] && program.courses.map(course => (
-                  <div key={course.id} className="ml-4">
-                    <button
-                      onClick={() => toggle(`c-${course.id}`)}
-                      className="w-full flex items-center gap-2 px-3 py-1 text-sm text-slate-600 hover:bg-slate-100 rounded"
-                    >
-                      {expanded[`c-${course.id}`] ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-                      {course.title}
-                    </button>
-                    {expanded[`c-${course.id}`] && course.modules.map(module => (
-                      <div key={module.id} className="ml-4">
-                        <div className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-slate-500 uppercase tracking-wide">
-                          {module.is_locked && <Lock className="w-3 h-3" />}
-                          {module.title}
-                        </div>
-                        {!module.is_locked && module.lessons.map(lesson => (
-                          <NavLink
-                            key={lesson.id}
-                            to={`/lesson/${lesson.id}`}
-                            className={({ isActive }) =>
-                              `block ml-3 px-3 py-1 text-sm rounded truncate ${isActive ? 'bg-blue-50 text-blue-700 font-medium' : 'text-slate-600 hover:bg-slate-100'}`
-                            }
-                          >
-                            {lesson.title}
-                          </NavLink>
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-
-          <div className="p-3 border-t space-y-1">
-            <NavLink to="/profile" className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">
-              <User className="w-4 h-4" />Профиль
-            </NavLink>
-            <button onClick={handleLogout} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">
-              <LogOut className="w-4 h-4" />Выйти
-            </button>
-          </div>
-        </div>
-      )}
-
-      <div className="flex-1 overflow-auto">
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg)' }}>
+      <Sidebar
+        items={STUDENT_NAV}
+        current={currentKey}
+        onNav={handleNav}
+        brand="Студент"
+        mode="student"
+        onSwitchMode={isAdmin ? () => navigate('/admin') : undefined}
+        footer={
+          <UserFooter
+            name={`${user?.first_name ?? ''} ${user?.last_name ?? ''}`.trim() || 'Пользователь'}
+            email={user?.email ?? ''}
+            onLogout={handleLogout}
+          />
+        }
+      />
+      <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
         <Outlet />
+      </main>
+    </div>
+  );
+}
+
+function UserFooter({
+  name,
+  email,
+  onLogout,
+}: {
+  name: string;
+  email: string;
+  onLogout: () => void;
+}) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+        padding: '6px 4px 0',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          padding: '6px 8px',
+          background: 'var(--bg-soft)',
+          borderRadius: 8,
+        }}
+      >
+        <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ink-900)' }}>{name}</span>
+        <span
+          style={{
+            fontSize: 11,
+            color: 'var(--ink-500)',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {email}
+        </span>
       </div>
+      <button
+        onClick={onLogout}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 8,
+          padding: '8px 10px',
+          fontSize: 12.5,
+          fontWeight: 500,
+          background: 'transparent',
+          color: 'var(--ink-600)',
+          border: '1px solid var(--line)',
+          borderRadius: 8,
+          cursor: 'pointer',
+        }}
+      >
+        Выйти
+      </button>
     </div>
   );
 }
