@@ -4,18 +4,21 @@ from pydantic import BaseModel
 # --- Program ---
 class ProgramCreate(BaseModel):
     title: str
+    slug: str | None = None
     description: str = ""
     image_url: str | None = None
 
 
 class ProgramUpdate(BaseModel):
     title: str | None = None
+    slug: str | None = None
     description: str | None = None
     image_url: str | None = None
 
 
 class ProgramOut(BaseModel):
     id: int
+    slug: str
     title: str
     description: str
     image_url: str | None
@@ -34,16 +37,19 @@ class ReorderItem(BaseModel):
 class CourseCreate(BaseModel):
     program_id: int
     title: str
+    slug: str | None = None
     description: str = ""
 
 
 class CourseUpdate(BaseModel):
     title: str | None = None
+    slug: str | None = None
     description: str | None = None
 
 
 class CourseOut(BaseModel):
     id: int
+    slug: str
     program_id: int
     title: str
     description: str
@@ -57,21 +63,25 @@ class CourseOut(BaseModel):
 class ModuleCreate(BaseModel):
     course_id: int
     title: str
+    slug: str | None = None
     description: str = ""
 
 
 class ModuleUpdate(BaseModel):
     title: str | None = None
+    slug: str | None = None
     description: str | None = None
 
 
 class ModuleOut(BaseModel):
     id: int
+    slug: str
     course_id: int
     title: str
     description: str
     sort_order: int
     is_locked: bool
+    is_published: bool
 
     model_config = {"from_attributes": True}
 
@@ -80,6 +90,7 @@ class ModuleOut(BaseModel):
 class LessonCreate(BaseModel):
     module_id: int
     title: str
+    slug: str | None = None
     description: str = ""
     type: str = "theory"
     duration_min: int = 0
@@ -87,6 +98,7 @@ class LessonCreate(BaseModel):
 
 class LessonUpdate(BaseModel):
     title: str | None = None
+    slug: str | None = None
     description: str | None = None
     type: str | None = None
     duration_min: int | None = None
@@ -94,6 +106,7 @@ class LessonUpdate(BaseModel):
 
 class LessonOut(BaseModel):
     id: int
+    slug: str
     module_id: int
     title: str
     description: str

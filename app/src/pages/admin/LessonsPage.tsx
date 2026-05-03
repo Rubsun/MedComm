@@ -72,8 +72,8 @@ export default function LessonsPage() {
     await load();
   };
 
-  const handleLockModule = async (id: number) => {
-    await modulesApi.lock(id);
+  const handlePublishModule = async (id: number) => {
+    await modulesApi.publish(id);
     await load();
   };
 
@@ -228,7 +228,7 @@ export default function LessonsPage() {
                   onChangeEdit={setEditModuleTitle}
                   onSaveEdit={() => handleSaveModuleEdit(m.id)}
                   onCancelEdit={() => setEditingModuleId(null)}
-                  onLock={() => handleLockModule(m.id)}
+                  onPublish={() => handlePublishModule(m.id)}
                   onDelete={() => handleDeleteModule(m.id)}
                   creatingLesson={creatingLessonInModule === m.id}
                   newLessonTitle={newLessonTitle}
@@ -271,7 +271,7 @@ function SortableModuleCard({
   onChangeEdit,
   onSaveEdit,
   onCancelEdit,
-  onLock,
+  onPublish,
   onDelete,
   creatingLesson,
   newLessonTitle,
@@ -298,7 +298,7 @@ function SortableModuleCard({
   onChangeEdit: (v: string) => void;
   onSaveEdit: () => void;
   onCancelEdit: () => void;
-  onLock: () => void;
+  onPublish: () => void;
   onDelete: () => void;
   creatingLesson: boolean;
   newLessonTitle: string;
@@ -385,22 +385,22 @@ function SortableModuleCard({
                   {lessons.length} {pluralize(lessons.length, 'урок', 'урока', 'уроков')}
                 </div>
               </div>
-              {mod.is_locked ? (
-                <Badge tone="warning" size="sm">
-                  Заблокирован
+              {mod.is_published ? (
+                <Badge tone="success" size="sm">
+                  Опубликован
                 </Badge>
               ) : (
                 <Badge tone="neutral" size="sm">
-                  Открыт
+                  Скрыт
                 </Badge>
               )}
               <Button
                 variant="ghost"
                 size="sm"
-                icon={mod.is_locked ? 'unlock' : 'lock'}
-                onClick={onLock}
+                icon={mod.is_published ? 'eyeOff' : 'eye'}
+                onClick={onPublish}
               >
-                {mod.is_locked ? 'Разблокировать' : 'Заблокировать'}
+                {mod.is_published ? 'Скрыть' : 'Показать'}
               </Button>
               <Button variant="ghost" size="sm" icon="edit" onClick={onStartEdit}>
                 Изменить

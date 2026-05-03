@@ -44,8 +44,9 @@ async def seed_content(session):
     program, _ = await get_or_create(
         session,
         Program,
-        title="Коммуникация врача с пациентом",
+        slug="demo-doctor-communication",
         defaults={
+            "title": "Коммуникация врача с пациентом",
             "description": "Базовая программа по эмпатичной и эффективной коммуникации.",
             "is_published": True,
             "sort_order": 0,
@@ -55,9 +56,10 @@ async def seed_content(session):
     course_basics, _ = await get_or_create(
         session,
         Course,
-        program_id=program.id,
-        title="Основы клинической коммуникации",
+        slug="demo-course-basics",
         defaults={
+            "program_id": program.id,
+            "title": "Основы клинической коммуникации",
             "description": "Структура консультации, активное слушание, эмпатия.",
             "is_published": True,
             "sort_order": 0,
@@ -67,9 +69,10 @@ async def seed_content(session):
     course_difficult, _ = await get_or_create(
         session,
         Course,
-        program_id=program.id,
-        title="Сложные разговоры",
+        slug="demo-course-difficult",
         defaults={
+            "program_id": program.id,
+            "title": "Сложные разговоры",
             "description": "Сообщение плохих новостей, конфликтные ситуации, отказ от лечения.",
             "is_published": True,
             "sort_order": 1,
@@ -80,11 +83,13 @@ async def seed_content(session):
     module_intro, _ = await get_or_create(
         session,
         Module,
-        course_id=course_basics.id,
-        title="Введение",
+        slug="demo-mod-intro",
         defaults={
+            "course_id": course_basics.id,
+            "title": "Введение",
             "description": "Зачем врачу учиться коммуникации.",
             "is_locked": False,
+            "is_published": True,
             "sort_order": 0,
         },
     )
@@ -92,11 +97,13 @@ async def seed_content(session):
     module_consultation, _ = await get_or_create(
         session,
         Module,
-        course_id=course_basics.id,
-        title="Структура консультации",
+        slug="demo-mod-consultation",
         defaults={
+            "course_id": course_basics.id,
+            "title": "Структура консультации",
             "description": "Модель Calgary–Cambridge: разделы и переходы.",
             "is_locked": False,
+            "is_published": True,
             "sort_order": 1,
         },
     )
@@ -104,11 +111,13 @@ async def seed_content(session):
     module_empathy, _ = await get_or_create(
         session,
         Module,
-        course_id=course_basics.id,
-        title="Эмпатия и активное слушание",
+        slug="demo-mod-empathy",
         defaults={
+            "course_id": course_basics.id,
+            "title": "Эмпатия и активное слушание",
             "description": "NURSE-фразы, парафраз, открытые вопросы.",
             "is_locked": False,
+            "is_published": True,
             "sort_order": 2,
         },
     )
@@ -117,9 +126,10 @@ async def seed_content(session):
     lesson_why, lesson_why_created = await get_or_create(
         session,
         Lesson,
-        module_id=module_intro.id,
-        title="Почему коммуникация — это навык",
+        slug="demo-lesson-why",
         defaults={
+            "module_id": module_intro.id,
+            "title": "Почему коммуникация — это навык",
             "description": "Доказательная база и клинические эффекты.",
             "type": "theory",
             "duration_min": 8,
@@ -131,9 +141,10 @@ async def seed_content(session):
     lesson_skills_quiz, _ = await get_or_create(
         session,
         Lesson,
-        module_id=module_intro.id,
-        title="Что я уже умею? — самопроверка",
+        slug="demo-lesson-self-check",
         defaults={
+            "module_id": module_intro.id,
+            "title": "Что я уже умею? — самопроверка",
             "description": "Короткий тест перед курсом.",
             "type": "mixed",
             "duration_min": 5,
@@ -146,9 +157,10 @@ async def seed_content(session):
     await get_or_create(
         session,
         Lesson,
-        module_id=module_consultation.id,
-        title="Открытие консультации",
+        slug="demo-lesson-opening",
         defaults={
+            "module_id": module_consultation.id,
+            "title": "Открытие консультации",
             "type": "theory",
             "duration_min": 10,
             "is_published": True,
@@ -158,9 +170,10 @@ async def seed_content(session):
     await get_or_create(
         session,
         Lesson,
-        module_id=module_consultation.id,
-        title="Сбор информации",
+        slug="demo-lesson-gathering",
         defaults={
+            "module_id": module_consultation.id,
+            "title": "Сбор информации",
             "type": "theory",
             "duration_min": 12,
             "is_published": True,
@@ -170,9 +183,10 @@ async def seed_content(session):
     await get_or_create(
         session,
         Lesson,
-        module_id=module_consultation.id,
-        title="Завершение консультации — практика",
+        slug="demo-lesson-closing",
         defaults={
+            "module_id": module_consultation.id,
+            "title": "Завершение консультации — практика",
             "type": "practice",
             "duration_min": 10,
             "is_published": True,
@@ -184,9 +198,10 @@ async def seed_content(session):
     await get_or_create(
         session,
         Lesson,
-        module_id=module_empathy.id,
-        title="NURSE-фразы для эмпатии",
+        slug="demo-lesson-nurse",
         defaults={
+            "module_id": module_empathy.id,
+            "title": "NURSE-фразы для эмпатии",
             "type": "theory",
             "duration_min": 9,
             "is_published": True,
@@ -196,9 +211,10 @@ async def seed_content(session):
     await get_or_create(
         session,
         Lesson,
-        module_id=module_empathy.id,
-        title="Открытые вопросы — практика",
+        slug="demo-lesson-open-questions",
         defaults={
+            "module_id": module_empathy.id,
+            "title": "Открытые вопросы — практика",
             "type": "practice",
             "duration_min": 10,
             "is_published": True,
@@ -210,20 +226,23 @@ async def seed_content(session):
     module_bad_news, _ = await get_or_create(
         session,
         Module,
-        course_id=course_difficult.id,
-        title="Сообщение плохих новостей",
+        slug="demo-mod-bad-news",
         defaults={
+            "course_id": course_difficult.id,
+            "title": "Сообщение плохих новостей",
             "description": "Протокол SPIKES.",
             "is_locked": False,
+            "is_published": True,
             "sort_order": 0,
         },
     )
     await get_or_create(
         session,
         Lesson,
-        module_id=module_bad_news.id,
-        title="Протокол SPIKES",
+        slug="demo-lesson-spikes",
         defaults={
+            "module_id": module_bad_news.id,
+            "title": "Протокол SPIKES",
             "type": "theory",
             "duration_min": 14,
             "is_published": True,

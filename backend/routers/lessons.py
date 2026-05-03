@@ -2,22 +2,40 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from backend.dependencies import get_db, require_admin
-from backend.models.content import Lesson, LessonBlock
+from backend.dependencies import get_db, require_admin, get_optional_admin
+from backend.models.content import Course, Lesson, LessonBlock, Module, Program
 from backend.models.user import User
 from backend.schemas.content import (
     LessonCreate, LessonUpdate, LessonOut,
     BlockCreate, BlockUpdate, BlockOut, ReorderItem,
 )
+from backend.services.slug import auto_slug
 
 router = APIRouter(prefix="/api/lessons", tags=["lessons"])
 
 
 @router.get("", response_model=list[LessonOut])
-async def list_lessons(module_id: int | None = None, db: AsyncSession = Depends(get_db)):
+async def list_lessons(
+    module_id: int | None = None,
+    db: AsyncSession = Depends(get_db),
+    is_admin: bool = Depends(get_optional_admin),
+):
     query = select(Lesson).order_by(Lesson.sort_order)
     if module_id is not None:
         query = query.where(Lesson.module_id == module_id)
+    if not is_admin:
+        # каскадная видимость по всей иерархии
+        query = (
+            query.join(Module, Module.id == Lesson.module_id)
+            .join(Course, Course.id == Module.course_id)
+            .join(Program, Program.id == Course.program_id)
+            .where(
+                Lesson.is_published.is_(True),
+                Module.is_published.is_(True),
+                Course.is_published.is_(True),
+                Program.is_published.is_(True),
+            )
+        )
     result = await db.execute(query)
     return result.scalars().all()
 
@@ -28,7 +46,10 @@ async def create_lesson(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    lesson = Lesson(**body.model_dump())
+    payload = body.model_dump()
+    if not payload.get("slug"):
+        payload["slug"] = auto_slug("lesson")
+    lesson = Lesson(**payload)
     db.add(lesson)
     await db.commit()
     await db.refresh(lesson)
@@ -36,10 +57,26 @@ async def create_lesson(
 
 
 @router.get("/{lesson_id}", response_model=LessonOut)
-async def get_lesson(lesson_id: int, db: AsyncSession = Depends(get_db)):
+async def get_lesson(
+    lesson_id: int,
+    db: AsyncSession = Depends(get_db),
+    is_admin: bool = Depends(get_optional_admin),
+):
     lesson = await db.get(Lesson, lesson_id)
     if not lesson:
         raise HTTPException(status_code=404, detail="Lesson not found")
+    if not is_admin:
+        if not lesson.is_published:
+            raise HTTPException(status_code=404, detail="Lesson not found")
+        module = await db.get(Module, lesson.module_id)
+        if not module or not module.is_published:
+            raise HTTPException(status_code=404, detail="Lesson not found")
+        course = await db.get(Course, module.course_id)
+        if not course or not course.is_published:
+            raise HTTPException(status_code=404, detail="Lesson not found")
+        program = await db.get(Program, course.program_id)
+        if not program or not program.is_published:
+            raise HTTPException(status_code=404, detail="Lesson not found")
     return lesson
 
 

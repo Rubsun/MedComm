@@ -6,6 +6,7 @@ from backend.dependencies import get_db, require_admin, get_optional_admin
 from backend.models.content import Course
 from backend.models.user import User
 from backend.schemas.content import CourseCreate, CourseUpdate, CourseOut, ReorderItem
+from backend.services.slug import auto_slug
 
 router = APIRouter(prefix="/api/courses", tags=["courses"])
 
@@ -31,7 +32,10 @@ async def create_course(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    course = Course(**body.model_dump())
+    payload = body.model_dump()
+    if not payload.get("slug"):
+        payload["slug"] = auto_slug("course")
+    course = Course(**payload)
     db.add(course)
     await db.commit()
     await db.refresh(course)

@@ -3,11 +3,11 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { lessonsApi } from '@/api/lessons';
 import { progressApi } from '@/api/progress';
 import { modulesApi } from '@/api/modules';
-import type { LessonBlockOut, LessonOut, ModuleOut } from '@/types/api';
+import type { LessonBlockOut, LessonOut, ModuleOut, QuizResultOut } from '@/types/api';
 import TextBlock from '@/components/lesson-blocks/TextBlock';
 import ImageBlock from '@/components/lesson-blocks/ImageBlock';
 import VideoBlock from '@/components/lesson-blocks/VideoBlock';
-import PracticeBlock from '@/components/lesson-blocks/PracticeBlock';
+import PracticeBlock, { type PracticeResultState } from '@/components/lesson-blocks/PracticeBlock';
 import QuizBlock from '@/components/lesson-blocks/QuizBlock';
 import {
   Badge,
@@ -47,12 +47,21 @@ export default function LessonPage() {
   const [moduleSiblings, setModuleSiblings] = useState<LessonOut[]>([]);
   const [parentModule, setParentModule] = useState<ModuleOut | null>(null);
 
+  // прогресс по конкретным блокам (по block.id) — загружается из /progress/me
+  const [practiceResults, setPracticeResults] = useState<Record<number, PracticeResultState>>({});
+  const [quizResults, setQuizResults] = useState<Record<number, QuizResultOut>>({});
+  // блоки, которые студент посетил в рамках текущей сессии (для текстовых/видео — это и есть «пройдены»)
+  const [visitedBlocks, setVisitedBlocks] = useState<Set<number>>(new Set([0]));
+
   useEffect(() => {
     if (!lessonId) return;
     const id = Number(lessonId);
     setActiveIdx(0);
     setCompleted(false);
     setError(null);
+    setVisitedBlocks(new Set([0]));
+    setPracticeResults({});
+    setQuizResults({});
     (async () => {
       try {
         const [lessonRes, blocksRes, progRes] = await Promise.all([
@@ -61,12 +70,44 @@ export default function LessonPage() {
           progressApi.me(),
         ]);
         const lessonData = lessonRes.data;
+        const sortedBlocks = blocksRes.data.slice().sort((a, b) => a.sort_order - b.sort_order);
         setLesson(lessonData);
-        setBlocks(blocksRes.data.slice().sort((a, b) => a.sort_order - b.sort_order));
+        setBlocks(sortedBlocks);
+
+        const blockIds = new Set(sortedBlocks.map((b) => b.id));
+        const practiceMap: Record<number, PracticeResultState> = {};
+        for (const r of progRes.data.practice_results) {
+          if (blockIds.has(r.lesson_block_id)) {
+            practiceMap[r.lesson_block_id] = {
+              is_correct: r.is_correct,
+              selected_option_ids: r.selected_option_ids,
+            };
+          }
+        }
+        setPracticeResults(practiceMap);
+        const quizMap: Record<number, QuizResultOut> = {};
+        for (const r of progRes.data.quiz_results) {
+          if (blockIds.has(r.lesson_block_id)) {
+            quizMap[r.lesson_block_id] = {
+              lesson_block_id: r.lesson_block_id,
+              score: r.score,
+              best_score: r.best_score,
+              max_score: r.max_score,
+              passed: r.passed,
+              attempts: r.attempts,
+              completed_at: r.completed_at,
+            };
+          }
+        }
+        setQuizResults(quizMap);
+
         const isDone = progRes.data.completed_lessons.some((p) => p.lesson_id === id);
         setCompleted(isDone);
+        if (isDone) {
+          // если урок уже пройден — все блоки помечаем посещёнными
+          setVisitedBlocks(new Set(sortedBlocks.map((_, i) => i)));
+        }
 
-        // подгружаем соседние уроки модуля для prev/next перехода между уроками
         if (lessonData.module_id) {
           const siblingsRes = await lessonsApi.list(lessonData.module_id);
           const siblings = siblingsRes.data
@@ -107,13 +148,44 @@ export default function LessonPage() {
     return moduleSiblings[lessonIndexInModule - 1] ?? null;
   }, [moduleSiblings, lessonIndexInModule]);
 
+  // условие готовности к завершению урока:
+  // — все practice-блоки правильно отвечены
+  // — все quiz-блоки сданы
+  // — все остальные (text/image/video) посещены
+  const completionStatus = useMemo(() => {
+    const reasons: string[] = [];
+    let pendingPractices = 0;
+    let pendingQuizzes = 0;
+    let unvisited = 0;
+    blocks.forEach((b, i) => {
+      if (b.type === 'practice') {
+        if (!practiceResults[b.id]?.is_correct) pendingPractices++;
+      } else if (b.type === 'quiz') {
+        if (!quizResults[b.id]?.passed) pendingQuizzes++;
+      } else if (!visitedBlocks.has(i)) {
+        unvisited++;
+      }
+    });
+    if (pendingPractices > 0) reasons.push(`пройдите практику (${pendingPractices})`);
+    if (pendingQuizzes > 0) reasons.push(`сдайте тест (${pendingQuizzes})`);
+    if (unvisited > 0) reasons.push(`пролистайте блоки (${unvisited})`);
+    return { canComplete: reasons.length === 0, reasons };
+  }, [blocks, practiceResults, quizResults, visitedBlocks]);
+
+  const isBlockDone = (i: number, b: LessonBlockOut) => {
+    if (completed) return true;
+    if (b.type === 'practice') return practiceResults[b.id]?.is_correct === true;
+    if (b.type === 'quiz') return quizResults[b.id]?.passed === true;
+    return visitedBlocks.has(i);
+  };
+
   const handleComplete = async () => {
     if (!lesson) return;
     setCompleting(true);
     try {
       await progressApi.completeLesson(lesson.id);
       setCompleted(true);
-      toast({ message: 'Урок завершён', icon: 'check' });
+      setVisitedBlocks(new Set(blocks.map((_, i) => i)));
     } catch (err) {
       console.error('Failed to complete lesson', err);
       toast({ message: 'Не удалось сохранить прогресс', icon: 'warning', color: 'var(--danger)' });
@@ -122,9 +194,14 @@ export default function LessonPage() {
     }
   };
 
+  const goToBlock = (i: number) => {
+    setActiveIdx(i);
+    setVisitedBlocks((prev) => new Set([...prev, i]));
+  };
+
   const handleNext = () => {
     if (!isLastBlock) {
-      setActiveIdx(activeIdx + 1);
+      goToBlock(activeIdx + 1);
     } else if (!completed) {
       void handleComplete();
     } else if (nextLessonInModule) {
@@ -135,7 +212,7 @@ export default function LessonPage() {
   };
 
   const handlePrev = () => {
-    if (!isFirstBlock) setActiveIdx(activeIdx - 1);
+    if (!isFirstBlock) goToBlock(activeIdx - 1);
     else if (prevLessonInModule) navigate(`/lesson/${prevLessonInModule.id}`);
   };
 
@@ -150,7 +227,6 @@ export default function LessonPage() {
 
   return (
     <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
-      {/* Sidebar — содержание урока */}
       <aside
         style={{
           width: 280,
@@ -215,60 +291,61 @@ export default function LessonPage() {
               В уроке пока нет блоков.
             </div>
           ) : (
-            blocks.map((b, i) => (
-              <button
-                key={b.id}
-                onClick={() => setActiveIdx(i)}
-                style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  padding: '9px 10px',
-                  borderRadius: 8,
-                  background: activeIdx === i ? 'var(--teal-50)' : 'transparent',
-                  border: 'none',
-                  color: activeIdx === i ? 'var(--teal-700)' : 'var(--ink-700)',
-                  fontSize: 12.5,
-                  fontWeight: activeIdx === i ? 600 : 500,
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  marginBottom: 2,
-                }}
-              >
-                <div
+            blocks.map((b, i) => {
+              const done = isBlockDone(i, b);
+              const isActive = activeIdx === i;
+              return (
+                <button
+                  key={b.id}
+                  onClick={() => goToBlock(i)}
                   style={{
-                    width: 22,
-                    height: 22,
-                    borderRadius: 6,
-                    background:
-                      i < activeIdx ? 'var(--teal-600)' : 'var(--bg-soft)',
-                    border: i < activeIdx ? 'none' : '1px solid var(--line)',
-                    color: i < activeIdx ? 'white' : 'var(--ink-500)',
+                    width: '100%',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
+                    gap: 10,
+                    padding: '9px 10px',
+                    borderRadius: 8,
+                    background: isActive ? 'var(--teal-50)' : 'transparent',
+                    border: 'none',
+                    color: isActive ? 'var(--teal-700)' : 'var(--ink-700)',
+                    fontSize: 12.5,
+                    fontWeight: isActive ? 600 : 500,
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    marginBottom: 2,
                   }}
                 >
-                  {i < activeIdx ? (
-                    <Icon name="check" size={12} />
-                  ) : (
-                    <Icon name={BLOCK_ICON[b.type] ?? 'note'} size={12} />
-                  )}
-                </div>
-                <span style={{ flex: 1, lineHeight: 1.3 }}>
-                  {BLOCK_LABEL[b.type] ?? b.type}
-                </span>
-              </button>
-            ))
+                  <div
+                    style={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: 6,
+                      background: done ? 'var(--teal-600)' : 'var(--bg-soft)',
+                      border: done ? 'none' : '1px solid var(--line)',
+                      color: done ? 'white' : 'var(--ink-500)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                    }}
+                  >
+                    {done ? (
+                      <Icon name="check" size={12} />
+                    ) : (
+                      <Icon name={BLOCK_ICON[b.type] ?? 'note'} size={12} />
+                    )}
+                  </div>
+                  <span style={{ flex: 1, lineHeight: 1.3 }}>
+                    {BLOCK_LABEL[b.type] ?? b.type}
+                  </span>
+                </button>
+              );
+            })
           )}
         </div>
       </aside>
 
-      {/* Main content */}
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-        {/* Top progress strip */}
         <div
           style={{
             padding: '12px 32px',
@@ -286,22 +363,25 @@ export default function LessonPage() {
             {blocks.length === 0 ? (
               <div style={{ height: 4, flex: 1, borderRadius: 2, background: 'var(--line-soft)' }} />
             ) : (
-              blocks.map((_, i) => (
-                <div
-                  key={i}
-                  style={{
-                    flex: 1,
-                    height: 4,
-                    borderRadius: 2,
-                    background:
-                      i < activeIdx
+              blocks.map((b, i) => {
+                const done = isBlockDone(i, b);
+                const isCurrent = i === activeIdx;
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      flex: 1,
+                      height: 4,
+                      borderRadius: 2,
+                      background: done
                         ? 'var(--teal-600)'
-                        : i === activeIdx
+                        : isCurrent
                           ? 'var(--teal-300)'
                           : 'var(--line-soft)',
-                  }}
-                />
-              ))
+                    }}
+                  />
+                );
+              })
             )}
           </div>
           <span className="num" style={{ fontSize: 11.5, color: 'var(--ink-500)' }}>
@@ -309,7 +389,6 @@ export default function LessonPage() {
           </span>
         </div>
 
-        {/* Block render */}
         <div
           style={{
             flex: 1,
@@ -321,7 +400,17 @@ export default function LessonPage() {
           }}
         >
           {currentBlock ? (
-            <BlockRenderer block={currentBlock} />
+            <BlockRenderer
+              block={currentBlock}
+              practiceInitial={practiceResults[currentBlock.id]}
+              quizInitial={quizResults[currentBlock.id]}
+              onPracticeResult={(r) =>
+                setPracticeResults((prev) => ({ ...prev, [currentBlock.id]: r }))
+              }
+              onQuizResult={(r) =>
+                setQuizResults((prev) => ({ ...prev, [currentBlock.id]: r }))
+              }
+            />
           ) : (
             <div
               style={{
@@ -336,7 +425,6 @@ export default function LessonPage() {
           )}
         </div>
 
-        {/* Footer nav */}
         <div
           style={{
             position: 'sticky',
@@ -373,13 +461,23 @@ export default function LessonPage() {
                 </span>
               </>
             )}
+            {isLastBlock && !completed && !completionStatus.canComplete && (
+              <div style={{ fontSize: 11, color: 'var(--danger)', marginTop: 2 }}>
+                Чтобы завершить: {completionStatus.reasons.join(', ')}
+              </div>
+            )}
           </div>
           {!isLastBlock ? (
             <Button variant="primary" iconRight="chevronRight" onClick={handleNext}>
               Продолжить
             </Button>
           ) : !completed ? (
-            <Button variant="primary" icon="checkCircle" onClick={handleNext} disabled={completing}>
+            <Button
+              variant="primary"
+              icon="checkCircle"
+              onClick={handleNext}
+              disabled={completing || !completionStatus.canComplete}
+            >
               {completing ? 'Сохранение…' : 'Завершить урок'}
             </Button>
           ) : nextLessonInModule ? (
@@ -401,7 +499,21 @@ export default function LessonPage() {
 
 // ──────────────────────────────────────────────────────────────────────────
 
-function BlockRenderer({ block }: { block: LessonBlockOut }) {
+interface RendererProps {
+  block: LessonBlockOut;
+  practiceInitial?: PracticeResultState;
+  quizInitial?: QuizResultOut;
+  onPracticeResult?: (r: PracticeResultState) => void;
+  onQuizResult?: (r: QuizResultOut) => void;
+}
+
+function BlockRenderer({
+  block,
+  practiceInitial,
+  quizInitial,
+  onPracticeResult,
+  onQuizResult,
+}: RendererProps) {
   return (
     <div className="anim-fade">
       <div
@@ -420,7 +532,7 @@ function BlockRenderer({ block }: { block: LessonBlockOut }) {
         {BLOCK_LABEL[block.type] ?? block.type}
       </div>
       {block.type === 'text' && (
-        <TextBlock data={block.data as { content: string }} />
+        <TextBlock data={block.data as { html?: string; markdown?: string; content?: string }} />
       )}
       {block.type === 'image' && (
         <ImageBlock data={block.data as { url: string; caption?: string }} />
@@ -428,8 +540,16 @@ function BlockRenderer({ block }: { block: LessonBlockOut }) {
       {block.type === 'video' && (
         <VideoBlock data={block.data as { url: string; title?: string }} />
       )}
-      {block.type === 'practice' && <PracticeBlock block={block} />}
-      {block.type === 'quiz' && <QuizBlock block={block} />}
+      {block.type === 'practice' && (
+        <PracticeBlock
+          block={block}
+          initialResult={practiceInitial}
+          onResult={onPracticeResult}
+        />
+      )}
+      {block.type === 'quiz' && (
+        <QuizBlock block={block} initialResult={quizInitial} onResult={onQuizResult} />
+      )}
     </div>
   );
 }

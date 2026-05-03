@@ -6,6 +6,7 @@ from backend.dependencies import get_db, require_admin, get_optional_admin
 from backend.models.content import Program
 from backend.models.user import User
 from backend.schemas.content import ProgramCreate, ProgramUpdate, ProgramOut, ReorderItem
+from backend.services.slug import auto_slug
 
 router = APIRouter(prefix="/api/programs", tags=["programs"])
 
@@ -28,7 +29,10 @@ async def create_program(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    prog = Program(**body.model_dump())
+    payload = body.model_dump()
+    if not payload.get("slug"):
+        payload["slug"] = auto_slug("program")
+    prog = Program(**payload)
     db.add(prog)
     await db.commit()
     await db.refresh(prog)

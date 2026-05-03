@@ -14,6 +14,7 @@ export interface TokenResponse {
 
 export interface ProgramOut {
   id: number;
+  slug: string;
   title: string;
   description: string;
   image_url: string | null;
@@ -23,6 +24,7 @@ export interface ProgramOut {
 
 export interface CourseOut {
   id: number;
+  slug: string;
   program_id: number;
   title: string;
   description: string;
@@ -32,15 +34,18 @@ export interface CourseOut {
 
 export interface ModuleOut {
   id: number;
+  slug: string;
   course_id: number;
   title: string;
   description: string;
   is_locked: boolean;
+  is_published: boolean;
   sort_order: number;
 }
 
 export interface LessonOut {
   id: number;
+  slug: string;
   module_id: number;
   title: string;
   description: string;
@@ -66,7 +71,7 @@ export interface EnrollmentOut {
 }
 
 export interface PracticeResultOut {
-  id: number;
+  id?: number;
   lesson_block_id: number;
   selected_option_ids: string[];
   is_correct: boolean;
@@ -74,7 +79,7 @@ export interface PracticeResultOut {
 }
 
 export interface QuizResultOut {
-  id: number;
+  id?: number;
   lesson_block_id: number;
   score: number;
   best_score: number;

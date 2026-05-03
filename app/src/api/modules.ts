@@ -11,6 +11,7 @@ export const modulesApi = {
     apiClient.put<ModuleOut>(`/api/modules/${id}`, data),
   delete: (id: number) => apiClient.delete(`/api/modules/${id}`),
   lock: (id: number) => apiClient.patch<ModuleOut>(`/api/modules/${id}/lock`),
+  publish: (id: number) => apiClient.patch<ModuleOut>(`/api/modules/${id}/publish`),
   reorder: (items: { id: number; sort_order: number }[]) =>
     apiClient.patch('/api/modules/reorder', items),
 };

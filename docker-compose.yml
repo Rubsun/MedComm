@@ -23,7 +23,7 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql+asyncpg://medcomm:medcomm@db:5432/medcomm
-      SECRET_KEY: change-this-to-a-random-secret-at-least-32-chars
+      SECRET_KEY: ${SECRET_KEY:-change-this-to-a-random-secret-at-least-32-chars}
       ACCESS_TOKEN_EXPIRE_MINUTES: 15
       REFRESH_TOKEN_EXPIRE_DAYS: 30
       MEDIA_DIR: media
@@ -31,8 +31,9 @@ services:
       CORS_ORIGINS: '["http://localhost"]'
     volumes:
       - media_data:/app/media
+      - ./content:/app_root/content:ro
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
 
   frontend:
     build: ./app
@@ -40,7 +41,7 @@ services:
     depends_on:
       - backend
     ports:
-      - "80:80"
+      - "127.0.0.1:8081:80"
 
 volumes:
   postgres_data:

@@ -2,10 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from backend.dependencies import get_db, require_admin
-from backend.models.content import Module
+from backend.dependencies import get_db, require_admin, get_optional_admin
+from backend.models.content import Course, Module, Program
 from backend.models.user import User
 from backend.schemas.content import ModuleCreate, ModuleUpdate, ModuleOut, ReorderItem
+from backend.services.slug import auto_slug
 
 router = APIRouter(prefix="/api/modules", tags=["modules"])
 
@@ -14,10 +15,22 @@ router = APIRouter(prefix="/api/modules", tags=["modules"])
 async def list_modules(
     course_id: int | None = None,
     db: AsyncSession = Depends(get_db),
+    is_admin: bool = Depends(get_optional_admin),
 ):
     query = select(Module).order_by(Module.sort_order)
     if course_id is not None:
         query = query.where(Module.course_id == course_id)
+    if not is_admin:
+        # студенту видны только опубликованные модули, у которых опубликован курс и программа
+        query = (
+            query.join(Course, Course.id == Module.course_id)
+            .join(Program, Program.id == Course.program_id)
+            .where(
+                Module.is_published.is_(True),
+                Course.is_published.is_(True),
+                Program.is_published.is_(True),
+            )
+        )
     result = await db.execute(query)
     return result.scalars().all()
 
@@ -28,7 +41,10 @@ async def create_module(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    mod = Module(**body.model_dump())
+    payload = body.model_dump()
+    if not payload.get("slug"):
+        payload["slug"] = auto_slug("module")
+    mod = Module(**payload)
     db.add(mod)
     await db.commit()
     await db.refresh(mod)
@@ -36,10 +52,23 @@ async def create_module(
 
 
 @router.get("/{module_id}", response_model=ModuleOut)
-async def get_module(module_id: int, db: AsyncSession = Depends(get_db)):
+async def get_module(
+    module_id: int,
+    db: AsyncSession = Depends(get_db),
+    is_admin: bool = Depends(get_optional_admin),
+):
     mod = await db.get(Module, module_id)
     if not mod:
         raise HTTPException(status_code=404, detail="Module not found")
+    if not is_admin:
+        if not mod.is_published:
+            raise HTTPException(status_code=404, detail="Module not found")
+        course = await db.get(Course, mod.course_id)
+        if not course or not course.is_published:
+            raise HTTPException(status_code=404, detail="Module not found")
+        program = await db.get(Program, course.program_id) if course else None
+        if not program or not program.is_published:
+            raise HTTPException(status_code=404, detail="Module not found")
     return mod
 
 
@@ -85,6 +114,21 @@ async def toggle_lock(
     if not mod:
         raise HTTPException(status_code=404, detail="Module not found")
     mod.is_locked = not mod.is_locked
+    await db.commit()
+    await db.refresh(mod)
+    return mod
+
+
+@router.patch("/{module_id}/publish", response_model=ModuleOut)
+async def toggle_publish(
+    module_id: int,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    mod = await db.get(Module, module_id)
+    if not mod:
+        raise HTTPException(status_code=404, detail="Module not found")
+    mod.is_published = not mod.is_published
     await db.commit()
     await db.refresh(mod)
     return mod
