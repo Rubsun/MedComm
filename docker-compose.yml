@@ -27,8 +27,8 @@ services:
       ACCESS_TOKEN_EXPIRE_MINUTES: 15
       REFRESH_TOKEN_EXPIRE_DAYS: 30
       MEDIA_DIR: media
-      COOKIE_SECURE: "false"
-      CORS_ORIGINS: '["http://localhost"]'
+      COOKIE_SECURE: "true"
+      CORS_ORIGINS: '["https://xn--b1abcshpjbbbgr.xn--p1ai","https://www.xn--b1abcshpjbbbgr.xn--p1ai"]'
     volumes:
       - media_data:/app/media
       - ./content:/app_root/content:ro
