@@ -401,6 +401,7 @@ export default function LessonPage() {
         >
           {currentBlock ? (
             <BlockRenderer
+              key={currentBlock.id}
               block={currentBlock}
               practiceInitial={practiceResults[currentBlock.id]}
               quizInitial={quizResults[currentBlock.id]}
