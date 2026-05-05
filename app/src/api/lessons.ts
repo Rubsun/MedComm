@@ -22,4 +22,16 @@ export const lessonsApi = {
     apiClient.put<LessonBlockOut>(`/api/lessons/${lessonId}/blocks/${blockId}`, data),
   deleteBlock: (lessonId: number, blockId: number) =>
     apiClient.delete(`/api/lessons/${lessonId}/blocks/${blockId}`),
+
+  exportDocx: (lessonId: number) =>
+    apiClient.get<Blob>(`/api/lessons/${lessonId}/export.docx`, { responseType: 'blob' }),
+  importDocx: (lessonId: number, file: File) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return apiClient.post<{ updated: number; created: number; skipped_placeholder: number }>(
+      `/api/lessons/${lessonId}/import-docx`,
+      fd,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
+  },
 };

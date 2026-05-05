@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
+import io
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -9,6 +12,7 @@ from backend.schemas.content import (
     LessonCreate, LessonUpdate, LessonOut,
     BlockCreate, BlockUpdate, BlockOut, ReorderItem,
 )
+from backend.services.docx_io import DocxImportError, lesson_to_docx, parse_docx
 from backend.services.slug import auto_slug
 
 router = APIRouter(prefix="/api/lessons", tags=["lessons"])
@@ -138,6 +142,98 @@ async def delete_lesson(
         raise HTTPException(status_code=404, detail="Lesson not found")
     await db.delete(lesson)
     await db.commit()
+
+
+# --- DOCX EXPORT / IMPORT ---
+
+@router.get("/{lesson_id}/export.docx")
+async def export_lesson_docx(
+    lesson_id: int,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    lesson = await db.get(Lesson, lesson_id)
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+    res = await db.execute(
+        select(LessonBlock)
+        .where(LessonBlock.lesson_id == lesson_id)
+        .order_by(LessonBlock.sort_order)
+    )
+    blocks = res.scalars().all()
+    payload = lesson_to_docx(lesson.title or "", lesson.description or "", blocks)
+    fname = f"lesson-{lesson.slug or lesson.id}.docx"
+    return StreamingResponse(
+        io.BytesIO(payload),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{fname}"'},
+    )
+
+
+@router.post("/{lesson_id}/import-docx")
+async def import_lesson_docx(
+    lesson_id: int,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    lesson = await db.get(Lesson, lesson_id)
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+
+    content = await file.read()
+    try:
+        parsed = parse_docx(content)
+    except DocxImportError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    res = await db.execute(
+        select(LessonBlock).where(LessonBlock.lesson_id == lesson_id)
+    )
+    existing = {b.sort_order: b for b in res.scalars().all()}
+
+    stats = {"updated": 0, "created": 0, "skipped_placeholder": 0}
+    for item in parsed:
+        sort_order = item["sort_order"]
+        btype = item["type"]
+        block = existing.get(sort_order)
+
+        if not item["_editable"]:
+            # practice/quiz — игнорируем; но проверим, что тип в файле совпадает с БД
+            if block is not None and block.type != btype:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"Блок sort_order={sort_order} в файле помечен как '{btype}', "
+                        f"а в БД хранится как '{block.type}'. Не меняйте порядок блоков."
+                    ),
+                )
+            stats["skipped_placeholder"] += 1
+            continue
+
+        data = item["data"]
+        if block is None:
+            db.add(LessonBlock(
+                lesson_id=lesson_id,
+                sort_order=sort_order,
+                type=btype,
+                data=data,
+            ))
+            stats["created"] += 1
+        else:
+            if block.type != btype:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"Блок sort_order={sort_order}: тип в файле '{btype}', "
+                        f"в БД '{block.type}'. Не меняйте типы блоков через .docx."
+                    ),
+                )
+            block.data = data
+            stats["updated"] += 1
+
+    await db.commit()
+    return stats
 
 
 # --- BLOCKS ---
