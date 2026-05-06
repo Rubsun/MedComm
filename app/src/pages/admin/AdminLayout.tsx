@@ -9,6 +9,7 @@ const ADMIN_NAV: SidebarItem[] = [
   { key: 'analytics', label: 'Аналитика', icon: 'chart' },
   { section: 'Контент' },
   { key: 'programs', label: 'Программы', icon: 'layers' },
+  { key: 'tests', label: 'Тесты', icon: 'note' },
   { key: 'achievements', label: 'Достижения', icon: 'trophy' },
   { section: 'Сообщество' },
   { key: 'students', label: 'Студенты', icon: 'users' },
@@ -18,6 +19,7 @@ const KEY_TO_PATH: Record<string, string> = {
   overview: '/admin',
   analytics: '/admin/analytics',
   programs: '/admin/programs',
+  tests: '/admin/tests',
   achievements: '/admin/achievements',
   students: '/admin/students',
 };
@@ -38,6 +40,7 @@ export default function AdminLayout() {
     )
       return 'programs';
     if (p.startsWith('/admin/achievements')) return 'achievements';
+    if (p.startsWith('/admin/tests')) return 'tests';
     if (p.startsWith('/admin/students')) return 'students';
     return undefined;
   }, [location.pathname]);

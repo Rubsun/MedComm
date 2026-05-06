@@ -8,6 +8,7 @@ import LoginPage from '@/pages/LoginPage';
 import RegisterPage from '@/pages/RegisterPage';
 import ProgramPage from '@/pages/ProgramPage';
 import AboutPage from '@/pages/AboutPage';
+import DiagnosticsPage from '@/pages/DiagnosticsPage';
 import AdminLayout from '@/pages/admin/AdminLayout';
 import AdminOverviewPage from '@/pages/admin/AdminOverviewPage';
 import ProgramsPage from '@/pages/admin/ProgramsPage';
@@ -18,6 +19,8 @@ import StudentsPage from '@/pages/admin/StudentsPage';
 import StudentProgressPage from '@/pages/admin/StudentProgressPage';
 import AnalyticsPage from '@/pages/admin/AnalyticsPage';
 import AchievementsAdminPage from '@/pages/admin/AchievementsAdminPage';
+import AdminTestsPage from '@/pages/admin/AdminTestsPage';
+import AdminTestEditorPage from '@/pages/admin/AdminTestEditorPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -74,6 +77,7 @@ function App() {
             <Route path="profile" element={<Profile />} />
             <Route path="achievements" element={<Profile />} />
             <Route path="about" element={<AboutPage />} />
+            <Route path="diagnostics" element={<DiagnosticsPage />} />
           </Route>
           <Route
             path="/admin"
@@ -92,6 +96,8 @@ function App() {
             <Route path="students" element={<StudentsPage />} />
             <Route path="students/:studentId" element={<StudentProgressPage />} />
             <Route path="achievements" element={<AchievementsAdminPage />} />
+            <Route path="tests" element={<AdminTestsPage />} />
+            <Route path="tests/:testId/editor" element={<AdminTestEditorPage />} />
           </Route>
         </Routes>
       </BrowserRouter>

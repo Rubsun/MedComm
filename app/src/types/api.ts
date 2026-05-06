@@ -180,3 +180,150 @@ export interface StreakOut {
   longest_streak: number;
   last_active_date: string | null;
 }
+
+// ── General tests ────────────────────────────────────────────────
+
+export type GeneralTestKind = 'entry' | 'final';
+export type GeneralTestQuestionType = 'yesno' | 'likert4' | 'scale10';
+
+export interface GeneralTestScale {
+  key: string;
+  name: string;
+  yes?: number[];
+  no?: number[];
+  direct?: number[];
+  reverse?: number[];
+  inverse?: number[];
+  avg?: boolean;
+}
+
+export interface GeneralTestInterpretation {
+  min: number;
+  max: number;
+  level: string;
+  short: string;
+  text: string;
+}
+
+export interface GeneralTestQuestionOut {
+  id: number;
+  sort_order: number;
+  text: string;
+}
+
+export interface GeneralTestListItem {
+  id: number;
+  slug: string;
+  kind: GeneralTestKind;
+  title: string;
+  method: string;
+  description: string;
+  question_type: GeneralTestQuestionType;
+  duration: string;
+  is_published: boolean;
+  sort_order: number;
+  questions_count: number;
+  scales_count: number;
+  interpretations_count: number;
+}
+
+export interface GeneralTestOut {
+  id: number;
+  slug: string;
+  kind: GeneralTestKind;
+  title: string;
+  method: string;
+  description: string;
+  question_type: GeneralTestQuestionType;
+  duration: string;
+  likert_labels: string[] | null;
+  scales: GeneralTestScale[];
+  interpretations: GeneralTestInterpretation[];
+  is_published: boolean;
+  sort_order: number;
+  questions: GeneralTestQuestionOut[];
+}
+
+export interface GeneralTestCreateInput {
+  slug?: string;
+  kind: GeneralTestKind;
+  title: string;
+  method?: string;
+  description?: string;
+  question_type: GeneralTestQuestionType;
+  duration?: string;
+  likert_labels?: string[] | null;
+  scales?: GeneralTestScale[];
+  interpretations?: GeneralTestInterpretation[];
+  questions?: string[];
+}
+
+export interface GeneralTestUpdateInput {
+  kind?: GeneralTestKind;
+  title?: string;
+  method?: string;
+  description?: string;
+  duration?: string;
+  likert_labels?: string[] | null;
+  scales?: GeneralTestScale[];
+  interpretations?: GeneralTestInterpretation[];
+  questions?: string[];
+}
+
+export type GeneralTestAnswer = 'yes' | 'no' | number;
+
+export interface GeneralTestScoreBreakdownItem {
+  key: string;
+  name: string;
+  value: number;
+  max: number;
+}
+
+export interface GeneralTestScore {
+  total: number;
+  max: number;
+  breakdown: GeneralTestScoreBreakdownItem[];
+}
+
+export interface GeneralTestInterpretationOut {
+  level: string;
+  short: string;
+  text: string;
+  min: number;
+  max: number;
+}
+
+export interface GeneralTestAttemptOut {
+  id: number;
+  test_id: number;
+  answers: Record<string, GeneralTestAnswer>;
+  score: GeneralTestScore | null;
+  interpretation: GeneralTestInterpretationOut | null;
+  is_completed: boolean;
+  started_at: string;
+  completed_at: string | null;
+}
+
+export interface GeneralTestDistributionItem {
+  level: string;
+  short: string;
+  min: number;
+  max: number;
+  count: number;
+}
+
+export interface GeneralTestRecentAttempt {
+  user_id: number;
+  user_name: string;
+  score_total: number;
+  level: string;
+  completed_at: string;
+}
+
+export interface GeneralTestResultsOut {
+  responses: number;
+  completed: number;
+  avg_score: number;
+  distribution: GeneralTestDistributionItem[];
+  recent: GeneralTestRecentAttempt[];
+}

@@ -7,6 +7,7 @@ const STUDENT_NAV: SidebarItem[] = [
   { section: 'Обучение' },
   { key: 'dashboard', label: 'Главная', icon: 'home' },
   { key: 'program', label: 'Программа', icon: 'map' },
+  { key: 'diagnostics', label: 'Диагностика', icon: 'note' },
   { section: 'Прогресс' },
   { key: 'achievements', label: 'Достижения', icon: 'trophy' },
   { key: 'profile', label: 'Профиль', icon: 'user' },
@@ -20,6 +21,7 @@ const KEY_TO_PATH: Record<string, string> = {
   achievements: '/achievements',
   profile: '/profile',
   about: '/about',
+  diagnostics: '/diagnostics',
 };
 
 export default function AppLayout() {
@@ -34,6 +36,7 @@ export default function AppLayout() {
     if (p.startsWith('/achievements')) return 'achievements';
     if (p.startsWith('/profile')) return 'profile';
     if (p.startsWith('/about')) return 'about';
+    if (p.startsWith('/diagnostics')) return 'diagnostics';
     if (p.startsWith('/lesson')) return 'program'; // подсветим программу при чтении урока
     return undefined;
   }, [location.pathname]);

@@ -13,6 +13,7 @@ from backend.routers.progress import router as progress_router
 from backend.routers.analytics import router as analytics_router
 from backend.routers.students import router as students_router
 from backend.routers.achievements import router as achievements_router
+from backend.routers.general_tests import router as general_tests_router
 
 app = FastAPI(title="Доктор, поговорим? API")
 
@@ -38,6 +39,7 @@ app.include_router(progress_router)
 app.include_router(analytics_router)
 app.include_router(students_router)
 app.include_router(achievements_router)
+app.include_router(general_tests_router)
 
 
 @app.get("/api/health")
