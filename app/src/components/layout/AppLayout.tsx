@@ -10,6 +10,8 @@ const STUDENT_NAV: SidebarItem[] = [
   { section: 'Прогресс' },
   { key: 'achievements', label: 'Достижения', icon: 'trophy' },
   { key: 'profile', label: 'Профиль', icon: 'user' },
+  { section: 'О платформе' },
+  { key: 'about', label: 'О проекте', icon: 'info' },
 ];
 
 const KEY_TO_PATH: Record<string, string> = {
@@ -17,6 +19,7 @@ const KEY_TO_PATH: Record<string, string> = {
   program: '/program',
   achievements: '/achievements',
   profile: '/profile',
+  about: '/about',
 };
 
 export default function AppLayout() {
@@ -30,6 +33,7 @@ export default function AppLayout() {
     if (p.startsWith('/program')) return 'program';
     if (p.startsWith('/achievements')) return 'achievements';
     if (p.startsWith('/profile')) return 'profile';
+    if (p.startsWith('/about')) return 'about';
     if (p.startsWith('/lesson')) return 'program'; // подсветим программу при чтении урока
     return undefined;
   }, [location.pathname]);

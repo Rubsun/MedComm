@@ -7,6 +7,7 @@ import Profile from '@/pages/Profile';
 import LoginPage from '@/pages/LoginPage';
 import RegisterPage from '@/pages/RegisterPage';
 import ProgramPage from '@/pages/ProgramPage';
+import AboutPage from '@/pages/AboutPage';
 import AdminLayout from '@/pages/admin/AdminLayout';
 import AdminOverviewPage from '@/pages/admin/AdminOverviewPage';
 import ProgramsPage from '@/pages/admin/ProgramsPage';
@@ -72,6 +73,7 @@ function App() {
             <Route path="lesson/:lessonId" element={<LessonPage />} />
             <Route path="profile" element={<Profile />} />
             <Route path="achievements" element={<Profile />} />
+            <Route path="about" element={<AboutPage />} />
           </Route>
           <Route
             path="/admin"
